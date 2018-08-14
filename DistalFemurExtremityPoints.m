@@ -21,8 +21,8 @@ function EP = DistalFemurExtremityPoints(Vertices, Faces, Side, PFEA, Sigma, Vis
 % 
 % AUTHOR: Maximilian C. M. Fischer
 % 	mediTEC - Chair of Medical Engineering, RWTH Aachen University
-% VERSION: 1.0.0
-% DATE: 2016-02-05
+% VERSION: 1.0.1
+% DATE: 2018-08-14
 % LICENSE: Modified BSD License (BSD license with non-military-use clause)
 
 addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));

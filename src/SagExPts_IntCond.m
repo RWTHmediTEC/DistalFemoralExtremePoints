@@ -1,10 +1,10 @@
 function [ExA, ExB, cpfh] = SagExPts_IntCond(Contour, sigmastart, sigmadelta, sigma, vis)
 
-%    - A Pattern-Recognition Algorithm for Identifying the Articulating Surface                                      
+%    - A Pattern-Recognition Algorithm for Identifying the Articulating Surface
 %
 %   INPUT:
 %       Contour    - nx2 double: X- & Y-coordinates of the contour
-%                      	Requirements: - Sorting: counter-clockwise, 
+%                      	Requirements: - Sorting: counter-clockwise,
 %                                     - Start point: Max Y-value
 %       sigmastart - Starting sigma value (see BOMultiScaleCurvature2D_adapted)
 %       sigmadelta - Delta value of sigma (see BOMultiScaleCurvature2D_adapted)
@@ -14,14 +14,14 @@ function [ExA, ExB, cpfh] = SagExPts_IntCond(Contour, sigmastart, sigmadelta, si
 %   OUTPUT:
 %       pExA  - integer: posterior extremity A
 %       aExB  - integer: anterior extremity B
-%       cpfh  - figure handle: empty if vis == 0 
+%       cpfh  - figure handle: empty if vis == 0
 %
 %   USAGE:
-% 
+%
 %   AUTHOR: MCMF
 %
 %   VERSION:
-%       
+%
 
 %% Calculations
 % Calculate the multi-scale curvature & the curvature scale-space image
@@ -51,7 +51,7 @@ ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExA & Local_Maxima_I
 if ~isempty(ExA_Candidates)
     ExA  = ExA_Candidates(1);
 else
-    % If no candiates are found, use the middle between the last zero 
+    % If no candiates are found, use the middle between the last zero
     % crossing before YMin and the local maxima around YMin.
     ExA  = zero_ExA + round((Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IYMin)) - zero_ExA)/2);
 end
@@ -59,13 +59,18 @@ end
 %% Anterior extremities B
 % ExB = Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IXMax));
 ZCP_B_Candidates = zcp{sigma}(zcp{sigma}>IYMin);
-zero_ExB = ZCP_B_Candidates(1);
-ExB_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs<zero_ExB);
-ExB  = ExB_Candidates(end);
+if ~isempty(ZCP_B_Candidates)
+    zero_ExB = ZCP_B_Candidates(1);
+    ExB_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs<zero_ExB);
+    ExB  = ExB_Candidates(end);
+else
+    zero_ExB=[];
+    ExB=IXMax;
+end
 
 %% Visualization
 cpfh = [];
-if vis == 1 || vis == 2   
+if vis == 1 || vis == 2
     %% Plot: Contour
     cpfh = figure('name', 'Contour');
     title('Contour');
@@ -89,9 +94,11 @@ if vis == 1 || vis == 2
     scatter(Contour(zero_ExA,1),Contour(zero_ExA,2), 'filled');
     text(Contour(zero_ExA,1),Contour(zero_ExA,2), 'Zero crossing point A',...
         'VerticalAlignment','bottom','HorizontalAlignment','right');
-    scatter(Contour(zero_ExB,1),Contour(zero_ExB,2), 'filled');
-    text(Contour(zero_ExB,1),Contour(zero_ExB,2), 'Zero crossing point B',...
-        'VerticalAlignment','bottom','HorizontalAlignment','left');
+    if ~isempty(zero_ExB)
+        scatter(Contour(zero_ExB,1),Contour(zero_ExB,2), 'filled');
+        text(Contour(zero_ExB,1),Contour(zero_ExB,2), 'Zero crossing point B',...
+            'VerticalAlignment','bottom','HorizontalAlignment','left');
+    end
     
     %% Normals of the contour
     % Get the normals (already normed)
@@ -121,8 +128,10 @@ if vis == 1 || vis == 2
     
     % Plot the anterior medial extremity B (amExB)
     scatter(Contour(ExB,1),Contour(ExB,2), 'filled');
-    text(Contour(ExB(1),1),Contour(ExB(1),2), ['medial B for \sigma = ' num2str(sigma)],...
-        'HorizontalAlignment','right');
+    if ExB~=IXMax
+        text(Contour(ExB(1),1),Contour(ExB(1),2), ['medial B for \sigma = ' num2str(sigma)],...
+            'HorizontalAlignment','right');
+    end
     
     scatter(Contour(IXMin,1),Contour(IXMin,2), 'k', 'filled');
     text(Contour(IXMin,1),Contour(IXMin,2), 'X_{Min}','HorizontalAlignment','left');
