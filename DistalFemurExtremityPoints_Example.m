@@ -1,23 +1,18 @@
 clearvars; close all; clc; opengl hardware;
-% [List.f, List.p] = matlab.codetools.requiredFilesAndProducts([mfilename '.m']); 
-% List.f = List.f'; List.p = List.p';
 
 addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));
 addpath('data');
 
 FileName = dir('data\*.mat');
 
-Sigma.Medial = 4;
-Sigma.Intercondylar = 6;
-Sigma.Lateral = 4;
+Idx = 1;
 
-Vis = 1; % Visualization
+load(FileName(Idx).name); 
+distalFemur.vertices = Vertices;
+distalFemur.faces = Faces;
+distalFemurUSP = transformPoint3d(distalFemur, USPTFM);
 
-for f=1 %:length(FileName)
-load(FileName(f).name); 
+ExPoints = DistalFemurExtremityPoints(distalFemurUSP, Side, PFEA, 'visu', 1, 'debug', 0);
 
-Vertices = transformPoint3d(Vertices, USPTFM);
-
-ExPoints = DistalFemurExtremityPoints(Vertices, Faces, Side, PFEA, Sigma, Vis);
-
-end
+% [List.f, List.p] = matlab.codetools.requiredFilesAndProducts([mfilename '.m']); 
+% List.f = List.f'; List.p = List.p';

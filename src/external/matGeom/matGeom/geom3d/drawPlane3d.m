@@ -1,5 +1,5 @@
 function h = drawPlane3d(plane, varargin)
-%DRAWPLANE3D Draw a plane clipped in the current axes
+%DRAWPLANE3D Draw a plane clipped by the current axes.
 %
 %   drawPlane3d(PLANE) draws a plane of the format:
 %       [x0 y0 z0  dx1 dy1 dz1  dx2 dy2 dz2]
@@ -122,13 +122,15 @@ ind = convhull(u1, u2);
 ind = ind(1:end-1);
 
 % draw the patch
-htmp = patch(hAx, ...
+htmp = patch( ...
     'XData', pts(ind,1), ...
     'YData', pts(ind,2), ...
-    'ZData', pts(ind,3), varargin{:});
+    'ZData', pts(ind,3), ...
+    'Parent', hAx, varargin{:});
 
 % Do not return axis if not requested
 % avoids output when called without semicolon
 if nargout > 0
     h = htmp;
 end
+

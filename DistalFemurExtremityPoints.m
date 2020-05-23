@@ -1,4 +1,4 @@
-function EP = DistalFemurExtremityPoints(Vertices, Faces, Side, PFEA, Sigma, Vis)
+function EP = DistalFemurExtremityPoints(distalFemurUSP, Side, PFEA, varargin)
 % TODO
 % 
 % INPUT:
@@ -27,17 +27,27 @@ function EP = DistalFemurExtremityPoints(Vertices, Faces, Side, PFEA, Sigma, Vis
 
 addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));
 
+%% Parse inputs
+p = inputParser;
+logParValidFunc=@(x) (islogical(x) || isequal(x,1) || isequal(x,0));
+addRequired(p,'distalFemurUSP',@(x) isstruct(x) && isfield(x, 'vertices') && isfield(x,'faces'))
+addParameter(p,'visualization',false,logParValidFunc);
+addParameter(p,'debugVisualization',false,logParValidFunc);
+parse(p,distalFemurUSP,varargin{:});
+visu = logical(p.Results.visualization);
+debugVisu = logical(p.Results.debugVisualization);
+
 %% Settings
 % Sigma: For explanation see the function: BOMultiScaleCurvature2D_adapted.m
-sigmastart = 1; sigmadelta = 1;
-
-%% Data
-Bone.vertices = Vertices;
-Bone.faces = Faces;
+sigmaStart = 1;
+sigmaDelta = 1;
+sigmaMedial = 4;
+sigmaIntercondylar = 6;
+sigmaLateral = 4;
 
 %% Find boundary points of the condyles
 % Intersection points between the mesh an the posterior foci elliptical axis 
-PFEA_IS_Pts = intersectLineMesh3d(PFEA, Bone.vertices, Bone.faces);
+PFEA_IS_Pts = intersectLineMesh3d(PFEA, distalFemurUSP.vertices, distalFemurUSP.faces);
 
 % Should be always 4 points
 if size(PFEA_IS_Pts,1) ~= 4
@@ -69,7 +79,7 @@ PISP{4,2} = ismember(PFEA_IS_Pts(:,3), max(PFEA_IS_Pts((PFEA_IS_Pts(:,3) > 0),3)
 
 for i=1:size(PFEA_IS_Pts,1)
     PISP{i,3} = PFEA_IS_Pts(PISP{i,2},:);
-end; clear i
+end
 
 % Start and end point of the zones, rounded to an integer value in Z direction
 NZS = PISP{1,3}; NZS(3) = ceil(NZS(3));
@@ -94,17 +104,18 @@ ZoneColors = parula(LS*2);
 %% Sagittal Cuts (SC)
 ZVector = [0, 0, 1];
 
+Contours = cell(1,LS);
 for s=1:LS
     SC(s).Color = ZoneColors(s,:);
     % Create cutting plane origins
     SC(s).PlaneOrigins = repmat(SC(s).Origin, SC(s).NoC, 1) + ...
         [zeros(SC(s).NoC,2), (0:SC(s).NoC-1)'];
     % Create SC(s).NoC Saggital Contour Profiles (SC(s).P)
-    T_Contour{s} = IntersectMeshPlaneParfor(Bone, SC(s).PlaneOrigins, ZVector);
+    Contours{s} = IntersectMeshPlaneParfor(distalFemurUSP, SC(s).PlaneOrigins, ZVector);
     for c=1:SC(s).NoC
         % If there is more than one closed contour after the cut, use the longest one
-        [~, IobC] = max(cellfun(@length, T_Contour{s}{c}));
-        SC(s).P(c).xyz = T_Contour{s}{c}{IobC}';
+        [~, IobC] = max(cellfun(@length, Contours{s}{c}));
+        SC(s).P(c).xyz = Contours{s}{c}{IobC}';
         % Close contour: Copy start value to the end
         if ~isequal(SC(s).P(c).xyz(1,:),SC(s).P(c).xyz(end,:))
             SC(s).P(c).xyz(end+1,:) = SC(s).P(c).xyz(1,:);
@@ -119,8 +130,8 @@ for s=1:LS
         if IYMax ~= 1
             SC(s).P(c).xyz = SC(s).P(c).xyz([IYMax:length(SC(s).P(c).xyz),1:IYMax-1],:);
         end
-    end; clear c;
-end; clear s
+    end
+end
 
 %% SagExPts = Sagittal Extremity Points
 % A pattern-recognition algorithm for identifying the articulating surface
@@ -132,16 +143,16 @@ for s=1:LS
         switch SC(s).Zone
             case 'NZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    SagExPts_MedCond(Contour, sigmastart, sigmadelta, Sigma.Medial, Vis);
+                    SagExPts_MedCond(Contour, sigmaStart, sigmaDelta, sigmaMedial, debugVisu);
             case 'MZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    SagExPts_IntCond(Contour, sigmastart, sigmadelta, Sigma.Intercondylar, Vis);
+                    SagExPts_IntCond(Contour, sigmaStart, sigmaDelta, sigmaIntercondylar, debugVisu);
             case 'PZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    SagExPts_LatCond(Contour, sigmastart, sigmadelta, Sigma.Lateral, Vis);
+                    SagExPts_LatCond(Contour, sigmaStart, sigmaDelta, sigmaLateral, debugVisu);
         end
-    end; clear c
-end; clear s
+    end
+end
 
 
 %% Find global extremity points of the sagittal contours (SCs)
@@ -156,37 +167,39 @@ SC(MZ).ExRange = BORD_INT:SC(MZ).NoC-BORD_INT;
 SC(PZ).ExRange = BORD_COL:SC(PZ).NoC-BORD_INT;
 
 % All start points (A) of zone MZ
-Distal_MZ = [];
+Distal_MZ = nan(length(SC(MZ).ExRange),3);
 for c = SC(MZ).ExRange
-    Distal_MZ(end+1,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
-end; clear c
+    Distal_MZ(c-BORD_INT+1,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
+end
 % Most anterior point of all starting points (A) of zone MZ
 [~, I_Distal_MZ_Xmax] = max(Distal_MZ(:,1));
 EP.Intercondylar = Distal_MZ(I_Distal_MZ_Xmax,:);
 
 % All start points (A) of zone NZ
-ProximalPosterior_NZ = [];
+ProximalPosterior_NZ = nan(length(SC(NZ).ExRange),3);
 for c = SC(NZ).ExRange
-    ProximalPosterior_NZ(end+1,:) = SC(NZ).P(c).xyz(SC(NZ).P(c).A,:);
-end; clear c
+    ProximalPosterior_NZ(c-BORD_COL+1,:) = SC(NZ).P(c).xyz(SC(NZ).P(c).A,:);
+end
 % Start point RC-NZ: Most proximal point of all start points (A) of zone NZ
 [~, I_ProximalPosterior_NZ_Ymax] = max(ProximalPosterior_NZ(:,2));
 EP.Medial = ProximalPosterior_NZ(I_ProximalPosterior_NZ_Ymax,:);
 
 % All start points (A) of zone PZ
-ProximalPosterior_PZ = [];
+ProximalPosterior_PZ = nan(length(SC(PZ).ExRange),3);
 for c = SC(PZ).ExRange
-    ProximalPosterior_PZ(end+1,:) = SC(PZ).P(c).xyz(SC(PZ).P(c).A,:);
-end; clear c
+    ProximalPosterior_PZ(c-BORD_COL+1,:) = SC(PZ).P(c).xyz(SC(PZ).P(c).A,:);
+end
 % Start point RC-PZ: Most proximal point of all start points (A) of zone PZ
 [~, I_ProximalPosterior_PZ_Ymax] = max(ProximalPosterior_PZ(:,2));
 EP.Lateral = ProximalPosterior_PZ(I_ProximalPosterior_PZ_Ymax,:);
 
 % All end points (B) of the zones NZ, MZ, PZ
-ProximalAnterior = [];
+ProximalAnterior = nan(length([SC.ExRange]),3);
+countIdx = 1;
 for s=1:LS
     for c = SC(s).ExRange
-        ProximalAnterior(end+1,:) = SC(s).P(c).xyz(SC(s).P(c).B,:);
+        ProximalAnterior(countIdx,:) = SC(s).P(c).xyz(SC(s).P(c).B,:);
+        countIdx = countIdx+1;
     end; clear c
 end
 % End point RC-MZ: Most proximal point of all end points (B) of the zones NZ, MZ, PZ
@@ -194,7 +207,7 @@ end
 EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
 
 %% Visualization
-if Vis == 1
+if visu == 1
     FigColor = [1 1 1];
     MonitorsPos = get(0,'MonitorPositions');
     Fig = figure('Units','pixels',...
@@ -217,7 +230,7 @@ if Vis == 1
     BoneProps.EdgeColor = 'none';
     BoneProps.FaceColor = [0.882, 0.831, 0.753];
     BoneProps.FaceAlpha = 0.7;
-    patch('Faces',Bone.faces, 'Vertices',Bone.vertices, BoneProps);
+    patch('Faces',distalFemurUSP.faces, 'Vertices',distalFemurUSP.vertices, BoneProps);
     
     drawLine3d(PFEA, 'b')
     
