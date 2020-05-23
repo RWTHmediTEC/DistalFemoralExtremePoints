@@ -1,4 +1,4 @@
-function EP = DistalFemurExtremityPoints(distalFemurUSP, Side, PFEA, varargin)
+function EP = distalFemurExtremityPoints(distalFemurUSP, Side, PFEA, varargin)
 % TODO
 % 
 % INPUT:
