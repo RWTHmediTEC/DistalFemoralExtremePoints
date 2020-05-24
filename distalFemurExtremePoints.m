@@ -1,4 +1,4 @@
-function EP = distalFemurExtremityPoints(distalFemurUSP, Side, PFEA, varargin)
+function EP = distalFemurExtremePoints(distalFemurUSP, Side, PFEA, varargin)
 % TODO
 % 
 % INPUT:
@@ -12,7 +12,7 @@ function EP = distalFemurExtremityPoints(distalFemurUSP, Side, PFEA, varargin)
 %     TODO
 % 
 % EXAMPLE:
-%     Run the file 'DistalFemurExtremityPoints_Example.m'
+%     Run the file 'DistalFemurExtremePoints_Example.m'
 % 
 % TODO:
 %   - Parsing
@@ -133,29 +133,29 @@ for s=1:LS
     end
 end
 
-%% SagExPts = Sagittal Extremity Points
+%% sagittalExPts = Sagittal Extreme Points
 % A pattern-recognition algorithm for identifying the articulating surface
 for s=1:LS
     for c=1:SC(s).NoC
         % Only the X & Y values are needed because the countours are parallel to the X-Y plane.
         Contour = SC(s).P(c).xyz(:,1:2);
-        % Get the anterior and posterior extremity points of the articulating surface
+        % Get the anterior and posterior extreme points of the articulating surface
         switch SC(s).Zone
             case 'NZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    SagExPts_MedCond(Contour, sigmaStart, sigmaDelta, sigmaMedial, debugVisu);
+                    sagittalExPts_MedCond(Contour, sigmaStart, sigmaDelta, sigmaMedial, debugVisu);
             case 'MZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    SagExPts_IntCond(Contour, sigmaStart, sigmaDelta, sigmaIntercondylar, debugVisu);
+                    sagittalExPts_IntCond(Contour, sigmaStart, sigmaDelta, sigmaIntercondylar, debugVisu);
             case 'PZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    SagExPts_LatCond(Contour, sigmaStart, sigmaDelta, sigmaLateral, debugVisu);
+                    sagittalExPts_LatCond(Contour, sigmaStart, sigmaDelta, sigmaLateral, debugVisu);
         end
     end
 end
 
 
-%% Find global extremity points of the sagittal contours (SCs)
+%% Find global extreme points of the sagittal contours (SCs)
 NZ = strcmp({SC(:).Zone}, 'NZ');
 MZ = strcmp({SC(:).Zone}, 'MZ');
 PZ = strcmp({SC(:).Zone}, 'PZ');

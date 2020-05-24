@@ -1,8 +1,12 @@
-function [ExA, ExB, cpfh] = SagExPts_LatCond(Contour, sigmastart, sigmadelta, sigma, vis)
-%
+function [ExA, ExB, cpfh] = sagittalExPts_MedCond(Contour, sigmastart, sigmadelta, sigma, vis)
+
 %    - A Pattern-Recognition Algorithm for Identifying the Articulating Surface
 %   
-%   HELP:                                       
+%   REFERENCE:
+%       Li et al. - Automating Analyses of the Distal Femur Articular 
+%       Geometry Basedon Three-Dimensional Surface Data
+%       Annals of Biomedical Engineering, Vol. 38, No. 9, September 2010 
+%       pp. 2928–2936                                     
 %
 %   INPUT:
 %       Contour    - nx2 double: X- & Y-coordinates of the contour
@@ -16,16 +20,14 @@ function [ExA, ExB, cpfh] = SagExPts_LatCond(Contour, sigmastart, sigmadelta, si
 %                               - 1: Plot contour
 %
 %   OUTPUT:
-%       ExA      - integer: extremity A
-%       ExB      - integer: extremity B
+%       ExA      - integer: posterior extreme point A
+%       ExB      - integer: anterior extreme point B
 %       cpfh     - figure handle: empty if vis == 0 
 %
 %   USAGE:
 % 
 %   AUTHOR: MCMF
-%
-%   VERSION:
-%       
+%  
 
 %% Calculations
 % Calculate the multi-scale curvature & the curvature scale-space image
@@ -38,59 +40,50 @@ function [ExA, ExB, cpfh] = SagExPts_LatCond(Contour, sigmastart, sigmadelta, si
 [YMax, IYMax] = max(Contour(:,2));
 % IYMax should always be 1, because the contour should start there
 if IYMax ~=1
-    warning('Contour should start at the max. Y value (YMax): Algorithm1 won''t work!')
+    warning('Contour should start at the max. Y value (YMax)!')
 end
 
-%% Find the posterior extremity A (ExA)
+%% Find the posterior extreme point ExA
 % To find the curvature zerocrossing point of ExA:
 % Find the sigma that meets the following condition:
 % Only 2 zero crossings lie between IYMax and IXMin of the contour
-sigma_ExA = 1;
+sigma_ExP = 1;
 for z=1:length(zcp(1:end-1))
     if sum(zcp{z}>IYMax & zcp{z}<IXMin) > 2
-        sigma_ExA = z+1;
+        sigma_ExP = z+1;
     end
 end
-zero_ExA = max(zcp{sigma_ExA}(zcp{sigma_ExA}>IYMax & zcp{sigma_ExA}<IXMin));
+zero_ExP = max(zcp{sigma_ExP}(zcp{sigma_ExP}>IYMax & zcp{sigma_ExP}<IXMin));
 % If no zero crossing is found set IYMax as crossing point
-if isempty(zero_ExA)
-    zero_ExA = IYMax;
+if isempty(zero_ExP)
+    zero_ExP = IYMax;
 end
 
 % Which Gaussian of width (sigma) should be used to find the local maxima
 if sigma == 0
-    sigma = sigma_ExA;
+    sigma = sigma_ExP;
 elseif sigma > length(zcp)
     sigma = length(zcp);
 end
 [~, Local_Maxima_Indcs] = findpeaks(K{sigma});
 
-% Find the posterior extremity A (ExA) defined as:
-% - local maximum curvature point inferior to the curvature zerocrossing point (zero_pExA)
-ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExA & Local_Maxima_Indcs<IXMin);
-% If no candiates are found set IYMax as pExA
-if ~isempty(ExA_Candidates)
-    ExA  = ExA_Candidates(1);
-else
+% Find the posterior extreme point P (ExA) defined as:
+% - local maximum curvature point inferior to the curvature zerocrossing point (zero_ExP)
+ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExP & Local_Maxima_Indcs<IXMin);
+% If no candiates are found set IYMax as ExA
+if isempty(ExA_Candidates)
     ExA = IYMax;
     warning('ExA = IYMax!')
+else
+    ExA  = ExA_Candidates(1);
 end
 
-%% Find the anterior extremity B
-% - If there are zero crossing points between the most anterior point and 
-%   the most inferior point of the contour, use the maximum of kappa
-%   between the most inferior point and the first zero crossing point after
-%   the most inferior point
-if sum(zcp{sigma}>IYMin & zcp{sigma}<IXMax) > 1;
-    IYMin_IXMax_zcp = zcp{sigma}(zcp{sigma}>IYMin & zcp{sigma}<IXMax);
-%     [~, alExB] = min(K{sigma}(IYMin_IXMax_zcp(1):IYMin_IXMax_zcp(2)));
-%     alExB = IYMin_IXMax_zcp(1)-1+alExB;
-    [~, ExB] = max(K{sigma}(IYMin:IYMin_IXMax_zcp(1)));
-    ExB = IYMin-1+ExB;
-else
-% - else use the local maximum curvature point closest to the most anterior point of the contour.
-ExB = Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IXMax));
-end
+%% Find the medial anterior extreme point ExB
+% Find ExB defined as:
+% - the local maximum curvature point with the largest curvature value in
+%   the region between the most anterior point and the most inferior point of the contour;
+[~, ExB] = max(K{sigma}(IYMin:IXMax));
+ExB = IYMin-1+ExB;
 
 %% Visualization
 cpfh = [];
@@ -115,8 +108,8 @@ if vis == 1 || vis == 2
     % Should be counter-clockwise
     quiver(Contour(1,1),Contour(1,2),Contour(6,1)-Contour(1,1),Contour(6,2)-Contour(1,2),...
         'g','LineWidth',3,'AutoScale','off','MaxHeadSize',30);
-    scatter(Contour(zero_ExA,1),Contour(zero_ExA,2), 'filled');
-    text(Contour(zero_ExA,1),Contour(zero_ExA,2), 'Zero crossing point',...
+    scatter(Contour(zero_ExP,1),Contour(zero_ExP,2), 'filled');
+    text(Contour(zero_ExP,1),Contour(zero_ExP,2), 'Zero crossing point',...
         'VerticalAlignment','bottom');
     
     %% Normals of the contour
@@ -139,15 +132,16 @@ if vis == 1 || vis == 2
     NormalEnds = Normals + Contour;
     plot(NormalEnds(:,1),NormalEnds(:,2),'k-.','LineWidth',1.5)
     
-    %% Plot extremity points of the articulating surface
-    % Plot the posterior extremity A (pExA)
+    %% Plot extreme points of the articulating surface
+    % Plot the posterior extreme point P (ExP)
     scatter(Contour(ExA,1),Contour(ExA,2), 'filled');
-    text(Contour(ExA,1),Contour(ExA,2), ['A for \sigma = ' num2str(sigma)],...
+    text(Contour(ExA,1),Contour(ExA,2), ['P for \sigma = ' num2str(sigma)],...
         'VerticalAlignment','top');
-    % Plot the anterior lateral extremity B (alExB)
+    
+    % Plot the anterior medial extreme point A (ExA)
     scatter(Contour(ExB,1),Contour(ExB,2), 'filled');
-    text(Contour(ExB,1),Contour(ExB,2), ['B for \sigma = ' num2str(sigma)],...
-        'VerticalAlignment','bottom','HorizontalAlignment','right');
+    text(Contour(ExB(1),1),Contour(ExB(1),2), ['medial A for \sigma = ' num2str(sigma)],...
+        'HorizontalAlignment','right');
     
     scatter(Contour(IXMin,1),Contour(IXMin,2), 'k', 'filled');
     text(Contour(IXMin,1),Contour(IXMin,2), 'X_{Min}','HorizontalAlignment','left');
@@ -159,7 +153,7 @@ if vis == 1 || vis == 2
     text(Contour(IYMax,1),Contour(IYMax,2), 'Y_{Max}','VerticalAlignment','top');
     
     axis equal;
-    title('Lateral')
+    title('Medial')
     
     if vis == 2 % <- Set this to 1 if Plots are needed
         %% Plot: Curvature Scale Space (CSS) Image
