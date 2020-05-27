@@ -1,0 +1,3 @@
+[submodule "src/external/AnatomicalViewTools"]
+	path = src/external/AnatomicalViewTools
+	url = https://github.com/MCM-Fischer/AnatomicalViewTools

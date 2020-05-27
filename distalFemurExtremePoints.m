@@ -17,7 +17,6 @@ function EP = distalFemurExtremePoints(distalFemurUSP, Side, PFEA, varargin)
 % TODO:
 %   - Parsing
 %   - Revise documentation
-%   - Use axes handles during visualization
 % 
 % AUTHOR: Maximilian C. M. Fischer
 % 	mediTEC - Chair of Medical Engineering, RWTH Aachen University
@@ -208,34 +207,12 @@ EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
 
 %% Visualization
 if visu == 1
-    FigColor = [1 1 1];
-    MonitorsPos = get(0,'MonitorPositions');
-    Fig = figure('Units','pixels',...
-        'Color',FigColor,'ToolBar','figure',...
-        'WindowScrollWheelFcn',@M_CB_Zoom,'WindowButtonDownFcn',@M_CB_RotateWithLeftMouse,...
-        'renderer','opengl');
-    if     size(MonitorsPos,1) == 1
-        set(Fig,'OuterPosition',MonitorsPos(1,:));
-    elseif size(MonitorsPos,1) == 2
-        set(Fig,'OuterPosition',MonitorsPos(2,:));
-    end
+    [~, axH] = visualizeMeshes(distalFemurUSP);
     
-    H_Axes = axes;
-    axis on; xlabel('X [mm]'); ylabel('Y [mm]'); zlabel('Z [mm]');
-    set(H_Axes,'Color',FigColor);
-    daspect([1 1 1])
-    cameratoolbar('SetCoordSys','none')
-    hold on
-    
-    BoneProps.EdgeColor = 'none';
-    BoneProps.FaceColor = [0.882, 0.831, 0.753];
-    BoneProps.FaceAlpha = 0.7;
-    patch('Faces',distalFemurUSP.faces, 'Vertices',distalFemurUSP.vertices, BoneProps);
-    
-    drawLine3d(PFEA, 'b')
+    drawLine3d(axH, PFEA, 'b')
     
     for i=1:size(PFEA_IS_Pts,1)
-        scatter3(PISP{i,3}(1),PISP{i,3}(2),PISP{i,3}(3),'m','filled');
+        scatter3(axH, PISP{i,3}(1),PISP{i,3}(2),PISP{i,3}(3),'m','filled');
     end; clear i
     
     for s=1:LS
@@ -243,51 +220,21 @@ if visu == 1
             % Plot contour-part in 3D
             CP3D = SC(s).P(c).xyz;
             EPA = SC(s).P(c).A; EPB = SC(s).P(c).B;
-            plot3(CP3D(EPA:EPB,1),CP3D(EPA:EPB,2),CP3D(EPA:EPB,3),'Color', SC(s).Color,'Linewidth',1);
+            plot3(axH, CP3D(EPA:EPB,1),CP3D(EPA:EPB,2),CP3D(EPA:EPB,3),...
+                'Color', SC(s).Color,'Linewidth',1);
         end; clear c
     end; clear s
     
-    T = EP.Medial;  scatter3(T(1),T(2),T(3),'r','filled');
-    text(T(1),T(2),T(3), 'Medial')
-    T = EP.Intercondylar; scatter3(T(1),T(2),T(3),'r','filled');
-    text(T(1),T(2),T(3), 'Intercondylar')
-    T = EP.Lateral;  scatter3(T(1),T(2),T(3),'r','filled');
-    text(T(1),T(2),T(3), 'Lateral')
-    T = EP.Anterior;  scatter3(T(1),T(2),T(3),'r','filled');
-    text(T(1),T(2),T(3), 'Anterior')
+    T = EP.Medial;  scatter3(axH, T(1),T(2),T(3),'r','filled');
+    text(axH, T(1),T(2),T(3), 'Medial')
+    T = EP.Intercondylar; scatter3(axH, T(1),T(2),T(3),'r','filled');
+    text(axH, T(1),T(2),T(3), 'Intercondylar')
+    T = EP.Lateral;  scatter3(axH, T(1),T(2),T(3),'r','filled');
+    text(axH, T(1),T(2),T(3), 'Lateral')
+    T = EP.Anterior;  scatter3(axH, T(1),T(2),T(3),'r','filled');
+    text(axH, T(1),T(2),T(3), 'Anterior')
     
-    hold off
-    
-    set(H_Axes,'CameraTarget',[0, 0, 0])
-    CamPos = [-0.6499, 0.4339, 0.6240] * norm(get(H_Axes,'CameraPosition'));
-    set(H_Axes,'CameraPosition',CamPos)
-    set(H_Axes,'CameraUpVector',[0, 1, 0])
-    
-    light1 = light; light('Position', -1*(get(light1,'Position')));
-    lighting phong
-end
+    anatomicalViewButtons(axH, 'ASR')
 end
 
-
-%% Subfunction: Mouse stuff
-function M_CB_RotateWithLeftMouse(src,~)
-if strcmp(get(src,'SelectionType'),'normal')
-    cameratoolbar('SetMode','orbit')
-end
-end
-
-function M_CB_Zoom(~,evnt)
-if evnt.VerticalScrollCount > 0
-    CVA_old = get(gca,'CameraViewAngle');
-    CVA_new = CVA_old + 1;
-    draw
-elseif evnt.VerticalScrollCount < 0
-    CVA_old = get(gca,'CameraViewAngle');
-    CVA_new = CVA_old - 1;
-    draw
-end
-    function draw
-        set(gca,'CameraViewAngle',CVA_new)
-        drawnow
-    end
 end
