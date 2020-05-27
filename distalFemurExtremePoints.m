@@ -172,35 +172,35 @@ switch side
         SC(NZ).ExRange = BORD_INT:SC(NZ).NoC;
         SC(PZ).ExRange = 1:SC(PZ).NoC-BORD_INT;
 end
-% All start points (A) of zone MZ
+% Take start points (A) of zone MZ specified by ExRange
 Distal_MZ = nan(SC(MZ).NoC,3);
 for c = SC(MZ).ExRange
     Distal_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
 end
 Distal_MZ(any(isnan(Distal_MZ),2),:)=[];
-% Most anterior point of all starting points (A) of zone MZ
-[~, I_Distal_MZ_Xmax] = max(Distal_MZ(:,1));
-EP.Intercondylar = Distal_MZ(I_Distal_MZ_Xmax,:);
+% Median of the start points
+[~, ICN_Idx] = pdist2(distalFemurUSP.vertices,median(Distal_MZ),'euclidean','Smallest',1);
+EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
-% All start points (A) of zone NZ
+% Take start points (A) of zone NZ specified by ExRange
 ProximalPosterior_NZ = nan(SC(NZ).NoC,3);
 for c = SC(NZ).ExRange
     ProximalPosterior_NZ(c,:) = SC(NZ).P(c).xyz(SC(NZ).P(c).A,:);
 end
 ProximalPosterior_NZ(any(isnan(ProximalPosterior_NZ),2),:)=[];
-% Start point RC-NZ: Most proximal point of all start points (A) of zone NZ
-[~, I_ProximalPosterior_NZ_Ymax] = max(ProximalPosterior_NZ(:,2));
-EP.Medial = ProximalPosterior_NZ(I_ProximalPosterior_NZ_Ymax,:);
+% Median of the start points
+[~, PPNZ_Idx] = pdist2(distalFemurUSP.vertices,median(ProximalPosterior_NZ),'euclidean','Smallest',1);
+EP.Medial = distalFemurUSP.vertices(PPNZ_Idx,:);
 
-% All start points (A) of zone PZ
+% Take start points (A) of zone PZ specified by ExRange
 ProximalPosterior_PZ = nan(SC(PZ).NoC,3);
 for c = SC(PZ).ExRange
     ProximalPosterior_PZ(c,:) = SC(PZ).P(c).xyz(SC(PZ).P(c).A,:);
 end
 ProximalPosterior_PZ(any(isnan(ProximalPosterior_PZ),2),:)=[];
-% Start point RC-PZ: Most proximal point of all start points (A) of zone PZ
-[~, I_ProximalPosterior_PZ_Ymax] = max(ProximalPosterior_PZ(:,2));
-EP.Lateral = ProximalPosterior_PZ(I_ProximalPosterior_PZ_Ymax,:);
+% Median of the start points
+[~, PPPZ_Idx] = pdist2(distalFemurUSP.vertices,median(ProximalPosterior_PZ),'euclidean','Smallest',1);
+EP.Lateral = distalFemurUSP.vertices(PPPZ_Idx,:);
 
 % All end points (B) of the zones NZ, MZ, PZ
 ProximalAnterior = nan(sum([SC.NoC]),3);
