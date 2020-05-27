@@ -65,15 +65,21 @@ if sigma == 0
 elseif sigma > length(zcp)
     sigma = length(zcp);
 end
-[~, Local_Maxima_Indcs] = findpeaks(K{sigma});
 
+[~, Local_Maxima_Indcs] = findpeaks(K{sigma});
 % Find the posterior extreme point P (ExA) defined as:
 % - local maximum curvature point inferior to the curvature zerocrossing point (zero_ExP)
 ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExP & Local_Maxima_Indcs<IXMin);
-% If no candiates are found set IYMax as ExA
+while isempty(ExA_Candidates) && sigma > 0
+    sigma = sigma-1;
+    [~, Local_Maxima_Indcs] = findpeaks(K{sigma});
+    ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExP & Local_Maxima_Indcs<IXMin);
+end
+
+% If no candiates are found set zero_ExP as ExA
 if isempty(ExA_Candidates)
-    ExA = IYMax;
-    warning('ExA = IYMax!')
+    ExA = zero_ExP;
+    warning('ExA = zero_ExP!')
 else
     ExA  = ExA_Candidates(1);
 end

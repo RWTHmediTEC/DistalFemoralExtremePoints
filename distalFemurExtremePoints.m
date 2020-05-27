@@ -1,4 +1,4 @@
-function EP = distalFemurExtremePoints(distalFemurUSP, Side, PFEA, varargin)
+function EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA, varargin)
 % TODO
 % 
 % INPUT:
@@ -30,9 +30,11 @@ addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));
 p = inputParser;
 logParValidFunc=@(x) (islogical(x) || isequal(x,1) || isequal(x,0));
 addRequired(p,'distalFemurUSP',@(x) isstruct(x) && isfield(x, 'vertices') && isfield(x,'faces'))
+addRequired(p,'side',@(x) any(validatestring(upper(x(1)),{'R','L'})));
 addParameter(p,'visualization',false,logParValidFunc);
 addParameter(p,'debugVisualization',false,logParValidFunc);
-parse(p,distalFemurUSP,varargin{:});
+parse(p, distalFemurUSP, side, varargin{:});
+side = upper(p.Results.side(1));
 visu = logical(p.Results.visualization);
 debugVisu = logical(p.Results.debugVisualization);
 
@@ -57,13 +59,13 @@ end
 % Negative Z = NZ
 % Middle     = MZ
 % Positive Z = PZ
-switch Side
-    case 'Right'
+switch side
+    case 'R'
         % RIGHT knee: medial - neg. Z values (NZ), lateral - pos. Z values (PZ)
         SC(1).Zone = 'NZ';
         SC(2).Zone = 'MZ';
         SC(3).Zone = 'PZ';
-    case 'Left'
+    case 'L'
         %  LEFT knee: medial - pos. Z values (PZ), lateral - neg. Z values (NZ)
         SC(1).Zone = 'PZ';
         SC(2).Zone = 'MZ';
@@ -81,12 +83,13 @@ for i=1:size(PFEA_IS_Pts,1)
 end
 
 % Start and end point of the zones, rounded to an integer value in Z direction
-NZS = PISP{1,3}; NZS(3) = ceil(NZS(3));
+BORD_COL = 6; BORD_INT = 4;
+NZS = PISP{1,3}; NZS(3) = ceil(NZS(3))+BORD_COL;
 MZS = PISP{2,3}; MZS(3) = ceil(MZS(3));
 PZS = PISP{3,3}; PZS(3) = ceil(PZS(3));
 NZE = PISP{2,3}; NZE(3) = floor(NZE(3));
 MZE = PISP{3,3}; MZE(3) = floor(MZE(3));
-PZE = PISP{4,3}; PZE(3) = floor(PZE(3));
+PZE = PISP{4,3}; PZE(3) = floor(PZE(3))-BORD_COL;
 
 % The number of sagittal cuts per zone
 SC(1).NoC = abs(NZS(3)-NZE(3))+1;
@@ -160,43 +163,50 @@ MZ = strcmp({SC(:).Zone}, 'MZ');
 PZ = strcmp({SC(:).Zone}, 'PZ');
 
 % Exclude border of the zones
-BORD_COL = 6; BORD_INT = 4;
-SC(NZ).ExRange = BORD_COL:SC(NZ).NoC-BORD_INT;
 SC(MZ).ExRange = BORD_INT:SC(MZ).NoC-BORD_INT;
-SC(PZ).ExRange = BORD_COL:SC(PZ).NoC-BORD_INT;
-
-% All start points (A) of zone MZ
-Distal_MZ = nan(length(SC(MZ).ExRange),3);
-for c = SC(MZ).ExRange
-    Distal_MZ(c-BORD_INT+1,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
+switch side
+    case 'R'
+        SC(NZ).ExRange = 1:SC(NZ).NoC-BORD_INT;
+        SC(PZ).ExRange = BORD_INT:SC(PZ).NoC;
+    case 'L'
+        SC(NZ).ExRange = BORD_INT:SC(NZ).NoC;
+        SC(PZ).ExRange = 1:SC(PZ).NoC-BORD_INT;
 end
+% All start points (A) of zone MZ
+Distal_MZ = nan(SC(MZ).NoC,3);
+for c = SC(MZ).ExRange
+    Distal_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
+end
+Distal_MZ(any(isnan(Distal_MZ),2),:)=[];
 % Most anterior point of all starting points (A) of zone MZ
 [~, I_Distal_MZ_Xmax] = max(Distal_MZ(:,1));
 EP.Intercondylar = Distal_MZ(I_Distal_MZ_Xmax,:);
 
 % All start points (A) of zone NZ
-ProximalPosterior_NZ = nan(length(SC(NZ).ExRange),3);
+ProximalPosterior_NZ = nan(SC(NZ).NoC,3);
 for c = SC(NZ).ExRange
-    ProximalPosterior_NZ(c-BORD_COL+1,:) = SC(NZ).P(c).xyz(SC(NZ).P(c).A,:);
+    ProximalPosterior_NZ(c,:) = SC(NZ).P(c).xyz(SC(NZ).P(c).A,:);
 end
+ProximalPosterior_NZ(any(isnan(ProximalPosterior_NZ),2),:)=[];
 % Start point RC-NZ: Most proximal point of all start points (A) of zone NZ
 [~, I_ProximalPosterior_NZ_Ymax] = max(ProximalPosterior_NZ(:,2));
 EP.Medial = ProximalPosterior_NZ(I_ProximalPosterior_NZ_Ymax,:);
 
 % All start points (A) of zone PZ
-ProximalPosterior_PZ = nan(length(SC(PZ).ExRange),3);
+ProximalPosterior_PZ = nan(SC(PZ).NoC,3);
 for c = SC(PZ).ExRange
-    ProximalPosterior_PZ(c-BORD_COL+1,:) = SC(PZ).P(c).xyz(SC(PZ).P(c).A,:);
+    ProximalPosterior_PZ(c,:) = SC(PZ).P(c).xyz(SC(PZ).P(c).A,:);
 end
+ProximalPosterior_PZ(any(isnan(ProximalPosterior_PZ),2),:)=[];
 % Start point RC-PZ: Most proximal point of all start points (A) of zone PZ
 [~, I_ProximalPosterior_PZ_Ymax] = max(ProximalPosterior_PZ(:,2));
 EP.Lateral = ProximalPosterior_PZ(I_ProximalPosterior_PZ_Ymax,:);
 
 % All end points (B) of the zones NZ, MZ, PZ
-ProximalAnterior = nan(length([SC.ExRange]),3);
+ProximalAnterior = nan(sum([SC.NoC]),3);
 countIdx = 1;
 for s=1:LS
-    for c = SC(s).ExRange
+    for c = 1:SC(s).NoC
         ProximalAnterior(countIdx,:) = SC(s).P(c).xyz(SC(s).P(c).B,:);
         countIdx = countIdx+1;
     end; clear c
@@ -221,9 +231,16 @@ if visu == 1
             CP3D = SC(s).P(c).xyz;
             EPA = SC(s).P(c).A; EPB = SC(s).P(c).B;
             plot3(axH, CP3D(EPA:EPB,1),CP3D(EPA:EPB,2),CP3D(EPA:EPB,3),...
-                'Color', SC(s).Color,'Linewidth',1);
-        end; clear c
-    end; clear s
+                'Color', 'k','Linewidth',1,'LineStyle','--');
+        end
+        for c=SC(s).ExRange
+            % Plot contour-part in 3D
+            CP3D = SC(s).P(c).xyz;
+            EPA = SC(s).P(c).A; EPB = SC(s).P(c).B;
+            plot3(axH, CP3D(EPA:EPB,1),CP3D(EPA:EPB,2),CP3D(EPA:EPB,3),...
+                'Color', SC(s).Color,'Linewidth',2);
+        end
+    end
     
     T = EP.Medial;  scatter3(axH, T(1),T(2),T(3),'r','filled');
     text(axH, T(1),T(2),T(3), 'Medial')
