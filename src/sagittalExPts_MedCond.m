@@ -42,6 +42,10 @@ function [ExA, ExB, cpfh] = sagittalExPts_MedCond(Contour, sigmastart, sigmadelt
 if IYMax ~=1
     warning('Contour should start at the max. Y value (YMax)!')
 end
+if IXMax == 1
+    XMax = Contour(end,1);
+    IXMax = size(Contour,1);
+end
 
 %% Find the posterior extreme point ExA
 % To find the curvature zerocrossing point of ExA:
@@ -70,9 +74,10 @@ end
 % Find the posterior extreme point P (ExA) defined as:
 % - local maximum curvature point inferior to the curvature zerocrossing point (zero_ExP)
 ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExP & Local_Maxima_Indcs<IXMin);
-while isempty(ExA_Candidates) && sigma > 0
-    sigma = sigma-1;
-    [~, Local_Maxima_Indcs] = findpeaks(K{sigma});
+newSigma = sigma;
+while isempty(ExA_Candidates) && newSigma >= 2
+    newSigma = newSigma-1;
+    [~, Local_Maxima_Indcs] = findpeaks(K{newSigma});
     ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExP & Local_Maxima_Indcs<IXMin);
 end
 
@@ -90,6 +95,7 @@ end
 %   the region between the most anterior point and the most inferior point of the contour;
 [~, ExB] = max(K{sigma}(IYMin:IXMax));
 ExB = IYMin-1+ExB;
+
 
 %% Visualization
 cpfh = [];

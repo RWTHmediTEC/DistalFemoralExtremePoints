@@ -71,9 +71,10 @@ end
 % Find the posterior extreme point A (ExA) defined as:
 % - local maximum curvature point inferior to the curvature zerocrossing point (zero_pExA)
 ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExA & Local_Maxima_Indcs<IXMin);
-while isempty(ExA_Candidates) && sigma > 0
-    sigma = sigma-1;
-    [~, Local_Maxima_Indcs] = findpeaks(K{sigma});
+newSigma = sigma;
+while isempty(ExA_Candidates) && newSigma >= 2
+    newSigma = newSigma-1;
+    [~, Local_Maxima_Indcs] = findpeaks(K{newSigma});
     ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExA & Local_Maxima_Indcs<IXMin);
 end
 % If no candiates are found set zero_ExA as pExA
