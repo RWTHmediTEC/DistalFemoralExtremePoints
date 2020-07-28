@@ -177,9 +177,9 @@ Distal_MZ = nan(SC(MZ).NoC,3);
 for c = SC(MZ).ExRange
     Distal_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
 end
-Distal_MZ(any(isnan(Distal_MZ),2),:)=[];
+Distal_MZ(any(isoutlier(Distal_MZ),2),:) = nan;
 % Median of the start points
-[~, ICN_Idx] = pdist2(distalFemurUSP.vertices,median(Distal_MZ),'euclidean','Smallest',1);
+[~, ICN_Idx] = pdist2(distalFemurUSP.vertices,median(Distal_MZ,'omitnan'),'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
 % Take start points (A) of zone NZ specified by ExRange
@@ -211,6 +211,7 @@ for s=1:LS
         countIdx = countIdx+1;
     end; clear c
 end
+ProximalAnterior(isoutlier(ProximalAnterior,'movmedian',10)) = nan;
 % End point RC-MZ: Most proximal point of all end points (B) of the zones NZ, MZ, PZ
 [~, I_ProximalAnterior_Ymax] = max(ProximalAnterior(:,2));
 EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
@@ -231,7 +232,7 @@ if visu == 1
             CP3D = SC(s).P(c).xyz;
             EPA = SC(s).P(c).A; EPB = SC(s).P(c).B;
             plot3(axH, CP3D(EPA:EPB,1),CP3D(EPA:EPB,2),CP3D(EPA:EPB,3),...
-                'Color', 'k','Linewidth',1,'LineStyle','--');
+                'Color', SC(s).Color,'Linewidth',1,'LineStyle','--');
         end
         for c=SC(s).ExRange
             % Plot contour-part in 3D
