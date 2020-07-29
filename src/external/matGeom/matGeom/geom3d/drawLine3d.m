@@ -25,7 +25,7 @@ function h = drawLine3d(lin, varargin)
 %
 %
 %   See also:
-%     lines3d, createLine3d, clipLine3d
+%     lines3d, createLine3d, clipLine3d, drawRay3d, drawEdge3d
 %
 
 % ---------
@@ -42,7 +42,7 @@ defOpts.Color = 'b';
     parseDrawInput(lin, isLine3d, 'line', defOpts, varargin{:});
 
 % extract limits of the bounding box
-box = [get(gca, 'xlim') get(gca, 'ylim') get(gca, 'zlim')];
+box = [get(hAx, 'xlim') get(hAx, 'ylim') get(hAx, 'zlim')];
 
 % clip the line with the limits of the current axis
 edge = clipLine3d(lin, box);

@@ -172,17 +172,32 @@ switch side
         SC(NZ).ExRange = BORD_INT:SC(NZ).NoC;
         SC(PZ).ExRange = 1:SC(PZ).NoC-BORD_INT;
 end
-% Take start points (A) of zone MZ specified by ExRange
+
+%% Intercondylar Notch: Take start points (A) of zone MZ specified by ExRange
 Distal_MZ = nan(SC(MZ).NoC,3);
 for c = SC(MZ).ExRange
     Distal_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
 end
 Distal_MZ(any(isoutlier(Distal_MZ),2),:) = nan;
-% Median of the start points
-[~, ICN_Idx] = pdist2(distalFemurUSP.vertices,median(Distal_MZ,'omitnan'),'euclidean','Smallest',1);
+% Median of the points A
+Distal_MZ_median = median(Distal_MZ,'omitnan');
+
+ICNmesh = cutMeshByPlane(distalFemurUSP, [MZS, 0 1 0, 0 0 1]);
+ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
+ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
+ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
+
+ICNsilhouette = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu',0);
+ICNsilhouette(isBelowPlane(ICNsilhouette,[MZS(1:2) MZS(3)+1, 1 0 0, 0  1 0]),:)=[];
+ICNsilhouette(isBelowPlane(ICNsilhouette,[MZE(1:2) MZE(3)-1, 1 0 0, 0 -1 0]),:)=[];
+ICNsilhouette(isBelowPlane(ICNsilhouette,[MZE(1) MZE(2)-2 MZE(3), 1 0 0, 0 0 1]),:)=[];
+[~, silYmaxIdx] = max(ICNsilhouette(:,2));
+
+ICNpoint = [Distal_MZ_median(1) ICNsilhouette(silYmaxIdx,2:3)];
+[~, ICN_Idx] = pdist2(distalFemurUSP.vertices,ICNpoint,'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
-% Take start points (A) of zone NZ specified by ExRange
+%% Take start points (A) of zone NZ specified by ExRange
 ProximalPosterior_NZ = nan(SC(NZ).NoC,3);
 for c = SC(NZ).ExRange
     ProximalPosterior_NZ(c,:) = SC(NZ).P(c).xyz(SC(NZ).P(c).A,:);
@@ -192,7 +207,7 @@ ProximalPosterior_NZ(any(isnan(ProximalPosterior_NZ),2),:)=[];
 [~, PPNZ_Idx] = pdist2(distalFemurUSP.vertices,median(ProximalPosterior_NZ),'euclidean','Smallest',1);
 EP.Medial = distalFemurUSP.vertices(PPNZ_Idx,:);
 
-% Take start points (A) of zone PZ specified by ExRange
+%% Take start points (A) of zone PZ specified by ExRange
 ProximalPosterior_PZ = nan(SC(PZ).NoC,3);
 for c = SC(PZ).ExRange
     ProximalPosterior_PZ(c,:) = SC(PZ).P(c).xyz(SC(PZ).P(c).A,:);
@@ -243,14 +258,19 @@ if visu == 1
         end
     end
     
-    T = EP.Medial;  scatter3(axH, T(1),T(2),T(3),'r','filled');
-    text(axH, T(1),T(2),T(3), 'Medial')
-    T = EP.Intercondylar; scatter3(axH, T(1),T(2),T(3),'r','filled');
-    text(axH, T(1),T(2),T(3), 'Intercondylar')
-    T = EP.Lateral;  scatter3(axH, T(1),T(2),T(3),'r','filled');
-    text(axH, T(1),T(2),T(3), 'Lateral')
-    T = EP.Anterior;  scatter3(axH, T(1),T(2),T(3),'r','filled');
-    text(axH, T(1),T(2),T(3), 'Anterior')
+    pointProps.MarkerFaceColor = 'r';
+    pointProps.MarkerEdgeColor = 'r';
+    pointProps.Marker = 'o';
+    pointProps.MarkerSize = 10;
+    
+    T = EP.Medial;  drawPoint3d(axH, T,pointProps)
+    drawLabels(axH, T, 'Medial')
+    T = EP.Intercondylar; drawPoint3d(axH, T,pointProps)
+    drawLabels(axH, T, 'Intercondylar')
+    T = EP.Lateral;  drawPoint3d(axH, T,pointProps)
+    drawLabels(axH, T, 'Lateral')
+    T = EP.Anterior;  drawPoint3d(axH, T,pointProps)
+    drawLabels(axH, T, 'Anterior')
     
     anatomicalViewButtons(axH, 'ASR')
 end
