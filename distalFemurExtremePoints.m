@@ -173,7 +173,8 @@ switch side
         SC(PZ).ExRange = 1:SC(PZ).NoC-BORD_INT;
 end
 
-%% Intercondylar Notch: Take start points (A) of zone MZ specified by ExRange
+%% Intercondylar Notch (ICN)
+% Take start points (A) of zone MZ specified by ExRange
 Distal_MZ = nan(SC(MZ).NoC,3);
 for c = SC(MZ).ExRange
     Distal_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
@@ -182,18 +183,24 @@ Distal_MZ(any(isoutlier(Distal_MZ),2),:) = nan;
 % Median of the points A
 Distal_MZ_median = median(Distal_MZ,'omitnan');
 
+% Clip region of the ICN
 ICNmesh = cutMeshByPlane(distalFemurUSP, [MZS, 0 1 0, 0 0 1]);
+ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+20 Distal_MZ_median(2:3), 0 1 0, 0 0 -1]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
 
-ICNsilhouette = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu',0);
-ICNsilhouette(isBelowPlane(ICNsilhouette,[MZS(1:2) MZS(3)+1, 1 0 0, 0  1 0]),:)=[];
-ICNsilhouette(isBelowPlane(ICNsilhouette,[MZE(1:2) MZE(3)-1, 1 0 0, 0 -1 0]),:)=[];
-ICNsilhouette(isBelowPlane(ICNsilhouette,[MZE(1) MZE(2)-2 MZE(3), 1 0 0, 0 0 1]),:)=[];
-[~, silYmaxIdx] = max(ICNsilhouette(:,2));
+% Get contour of the ICN mesh in the y-z plane
+ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
 
-ICNpoint = [Distal_MZ_median(1) ICNsilhouette(silYmaxIdx,2:3)];
+% Shrink contour on both sides and on the top
+ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:)=[];
+ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:)=[];
+ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-2 MZE(3), 1 0 0, 0 0 1]),:)=[];
+[~, silYmaxIdx] = max(ICNcontour(:,2));
+
+% Final ICN point
+ICNpoint = [Distal_MZ_median(1) ICNcontour(silYmaxIdx,2:3)];
 [~, ICN_Idx] = pdist2(distalFemurUSP.vertices,ICNpoint,'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
@@ -263,14 +270,19 @@ if visu == 1
     pointProps.Marker = 'o';
     pointProps.MarkerSize = 10;
     
-    T = EP.Medial;  drawPoint3d(axH, T,pointProps)
-    drawLabels(axH, T, 'Medial')
-    T = EP.Intercondylar; drawPoint3d(axH, T,pointProps)
-    drawLabels(axH, T, 'Intercondylar')
-    T = EP.Lateral;  drawPoint3d(axH, T,pointProps)
-    drawLabels(axH, T, 'Lateral')
-    T = EP.Anterior;  drawPoint3d(axH, T,pointProps)
-    drawLabels(axH, T, 'Anterior')
+    drawPoint3d(axH, EP.Medial,pointProps)
+    drawLabels3d(axH, EP.Medial, 'Medial')
+    drawPoint3d(axH, EP.Intercondylar,pointProps)
+    drawLabels3d(axH, EP.Intercondylar, 'Intercondylar')
+    drawPoint3d(axH, EP.Lateral,pointProps)
+    drawLabels3d(axH, EP.Lateral, 'Lateral')
+    drawPoint3d(axH, EP.Anterior,pointProps)
+    drawLabels3d(axH, EP.Anterior, 'Anterior')
+    
+    % drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor', 'k')
+    % drawLabels3d(axH, ICNpoint, 'ICN')
+    % drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
+    % drawMesh(axH, ICNmesh,'FaceAlpha',0.5,'FaceColor','none')
     
     anatomicalViewButtons(axH, 'ASR')
 end
