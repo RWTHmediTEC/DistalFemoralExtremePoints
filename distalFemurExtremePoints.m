@@ -43,7 +43,7 @@ debugVisu = logical(p.Results.debugVisualization);
 sigmaStart = 1;
 sigmaDelta = 1;
 sigmaMedial = 4;
-sigmaIntercondylar = 6;
+sigmaIntercondylar = 4;
 sigmaLateral = 4;
 
 %% Find boundary points of the condyles
@@ -185,7 +185,7 @@ Distal_MZ_median = median(Distal_MZ,'omitnan');
 
 % Clip region of the ICN
 ICNmesh = cutMeshByPlane(distalFemurUSP, [MZS, 0 1 0, 0 0 1]);
-ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+20 Distal_MZ_median(2:3), 0 1 0, 0 0 -1]);
+ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+5 Distal_MZ_median(2:3), 0 1 0, 0 0 -1]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
@@ -279,10 +279,10 @@ if visu == 1
     drawPoint3d(axH, EP.Anterior,pointProps)
     drawLabels3d(axH, EP.Anterior, 'Anterior')
     
-    % drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor', 'k')
-    % drawLabels3d(axH, ICNpoint, 'ICN')
-    % drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
-    % drawMesh(axH, ICNmesh,'FaceAlpha',0.5,'FaceColor','none')
+    drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor', 'k')
+    drawLabels3d(axH, ICNpoint, 'ICN')
+    drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
+    drawMesh(axH, ICNmesh,'FaceAlpha',0.5,'FaceColor','none')
     
     anatomicalViewButtons(axH, 'ASR')
 end
