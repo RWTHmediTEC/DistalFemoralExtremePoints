@@ -15,8 +15,8 @@ function EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA, varargin)
 %     Run the file 'DistalFemurExtremePoints_Example.m'
 % 
 % TODO:
-%   - Parsing
-%   - Revise documentation
+%   - Add input of landmarks for additonal sanity checks
+%   - Documentation
 % 
 % AUTHOR: Maximilian C. M. Fischer
 % 	mediTEC - Chair of Medical Engineering, RWTH Aachen University
@@ -227,7 +227,6 @@ ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-2 MZE(3), 1 0 0, 0 0 1]),:)=[]
 ICNpoint = [Distal_MZ_median(1) ICNcontour(silYmaxIdx,2:3)];
 [ICN_D, ICN_Idx] = pdist2(Distal_MZ_median,ICNpoint,'euclidean','Smallest',1);
 [~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ_median(ICN_Idx,:),'euclidean','Smallest',1);
-display(ICN_D)
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
 %% Take start points (A) of zone NZ specified by ExRange
