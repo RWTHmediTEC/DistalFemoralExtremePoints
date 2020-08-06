@@ -47,12 +47,36 @@ sigmaIntercondylar = 4;
 sigmaLateral = 4;
 
 %% Find boundary points of the condyles
-% Intersection points between the mesh an the posterior foci elliptical axis 
-PFEA_IS_Pts = intersectLineMesh3d(PFEA, distalFemurUSP.vertices, distalFemurUSP.faces);
+% Check that PFEA points in positive z direction
+if PFEA(6)<0; PFEA(4:6) = -PFEA(4:6); end
+% Intersection points between the mesh an the posterior foci elliptical axis
+[PFEA_IS_Pts, PFEA_Pos] = intersectLineMesh3d(PFEA, distalFemurUSP.vertices, distalFemurUSP.faces);
 
-% Should be always 4 points
-if size(PFEA_IS_Pts,1) ~= 4
-    error('PFEA intersection points with the distal femur mesh ~= 4')
+% Should always be four inters. points
+PFEA_error = 'PFEA intersection points with the distal femur mesh ~= 4.';
+if size(PFEA_IS_Pts,1) > 4
+    % Otherwise try to merge close points
+    PFEA_THRESHOLD = 5; % Threshold in [mm] to merge points
+    % Sort inters. points along the PFEA
+    [PFEA_Pos, sortIdx] = sort(PFEA_Pos);
+    PFEA_IS_Pts = PFEA_IS_Pts(sortIdx,:);
+    % Find close points
+    diffIdx = find(diff(PFEA_Pos) < PFEA_THRESHOLD);
+    % Delete them based on the position
+    for d=1:length(diffIdx)
+        if PFEA_IS_Pts(diffIdx(d),3)<0
+            PFEA_IS_Pts(diffIdx(d),:)=nan;
+        else
+            PFEA_IS_Pts(diffIdx(d)+1,:)=nan;
+        end
+    end
+    PFEA_IS_Pts(any(isnan(PFEA_IS_Pts),2),:)=[];
+    % Check again
+    if size(PFEA_IS_Pts,1) ~= 4
+        error(PFEA_error)
+    end
+elseif size(PFEA_IS_Pts,1) < 4
+    error(PFEA_error)
 end
 
 % The intersection points devide the distal femur into 3 parts in Z direction:
@@ -201,7 +225,9 @@ ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-2 MZE(3), 1 0 0, 0 0 1]),:)=[]
 
 % Final ICN point
 ICNpoint = [Distal_MZ_median(1) ICNcontour(silYmaxIdx,2:3)];
-[~, ICN_Idx] = pdist2(distalFemurUSP.vertices,ICNpoint,'euclidean','Smallest',1);
+[ICN_D, ICN_Idx] = pdist2(Distal_MZ_median,ICNpoint,'euclidean','Smallest',1);
+[~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ_median(ICN_Idx,:),'euclidean','Smallest',1);
+display(ICN_D)
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
 %% Take start points (A) of zone NZ specified by ExRange
