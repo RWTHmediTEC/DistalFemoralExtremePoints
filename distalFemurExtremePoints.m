@@ -51,15 +51,21 @@ sigmaLateral = 4;
 if PFEA(6)<0; PFEA(4:6) = -PFEA(4:6); end
 % Intersection points between the mesh an the posterior foci elliptical axis
 [PFEA_IS_Pts, PFEA_Pos] = intersectLineMesh3d(PFEA, distalFemurUSP.vertices, distalFemurUSP.faces);
+% Sort inters. points along the PFEA
+[PFEA_Pos, sortIdx] = sort(PFEA_Pos);
+PFEA_IS_Pts = PFEA_IS_Pts(sortIdx,:);
+
+if visu
+    patchProps.FaceAlpha = 0.5;
+    [~, axH] = visualizeMeshes(distalFemurUSP, patchProps);
+    drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','k', 'MarkerEdgeColor','k')
+end
 
 % Should always be four inters. points
 PFEA_error = 'PFEA intersection points with the distal femur mesh ~= 4.';
 if size(PFEA_IS_Pts,1) > 4
     % Otherwise try to merge close points
     PFEA_THRESHOLD = 5; % Threshold in [mm] to merge points
-    % Sort inters. points along the PFEA
-    [PFEA_Pos, sortIdx] = sort(PFEA_Pos);
-    PFEA_IS_Pts = PFEA_IS_Pts(sortIdx,:);
     % Find close points
     diffIdx = find(diff(PFEA_Pos) < PFEA_THRESHOLD);
     % Delete them based on the position
@@ -96,24 +102,14 @@ switch side
         SC(3).Zone = 'NZ';
 end
 
-% Assign them to the zones
-PISP{1,2} = ismember(PFEA_IS_Pts(:,3), min(PFEA_IS_Pts((PFEA_IS_Pts(:,3) < 0),3)));
-PISP{2,2} = ismember(PFEA_IS_Pts(:,3), max(PFEA_IS_Pts((PFEA_IS_Pts(:,3) < 0),3)));
-PISP{3,2} = ismember(PFEA_IS_Pts(:,3), min(PFEA_IS_Pts((PFEA_IS_Pts(:,3) > 0),3)));
-PISP{4,2} = ismember(PFEA_IS_Pts(:,3), max(PFEA_IS_Pts((PFEA_IS_Pts(:,3) > 0),3)));
-
-for i=1:size(PFEA_IS_Pts,1)
-    PISP{i,3} = PFEA_IS_Pts(PISP{i,2},:);
-end
-
 % Start and end point of the zones, rounded to an integer value in Z direction
 BORD_COL = 6; BORD_INT = 4;
-NZS = PISP{1,3}; NZS(3) = ceil(NZS(3))+BORD_COL;
-MZS = PISP{2,3}; MZS(3) = ceil(MZS(3));
-PZS = PISP{3,3}; PZS(3) = ceil(PZS(3));
-NZE = PISP{2,3}; NZE(3) = floor(NZE(3));
-MZE = PISP{3,3}; MZE(3) = floor(MZE(3));
-PZE = PISP{4,3}; PZE(3) = floor(PZE(3))-BORD_COL;
+NZS = PFEA_IS_Pts(1,:); NZS(3) = ceil(NZS(3))+BORD_COL;
+NZE = PFEA_IS_Pts(2,:); NZE(3) = floor(NZE(3));
+MZS = PFEA_IS_Pts(2,:); MZS(3) = ceil(MZS(3));
+MZE = PFEA_IS_Pts(3,:); MZE(3) = floor(MZE(3));
+PZS = PFEA_IS_Pts(3,:); PZS(3) = ceil(PZS(3));
+PZE = PFEA_IS_Pts(4,:); PZE(3) = floor(PZE(3))-BORD_COL;
 
 % The number of sagittal cuts per zone
 SC(1).NoC = abs(NZS(3)-NZE(3))+1;
@@ -127,6 +123,12 @@ SC(3).Origin = PZS;
 LS = size(SC,2);
 ZoneColors = parula(LS*2);
 
+if visu
+    for s=1:LS
+        drawPoint3d(axH, SC(s).Origin)
+    end
+end
+
 %% Sagittal Cuts (SC)
 ZVector = [0, 0, 1];
 
@@ -134,8 +136,10 @@ Contours = cell(1,LS);
 for s=1:LS
     SC(s).Color = ZoneColors(s,:);
     % Create cutting plane origins
-    SC(s).PlaneOrigins = repmat(SC(s).Origin, SC(s).NoC, 1) + ...
-        [zeros(SC(s).NoC,2), (0:SC(s).NoC-1)'];
+    SC(s).PlaneOrigins = repmat(SC(s).Origin, SC(s).NoC, 1) + [zeros(SC(s).NoC,2), (0:SC(s).NoC-1)'];
+    if visu
+        drawPoint3d(axH, SC(s).PlaneOrigins,'MarkerFaceColor',SC(s).Color, 'MarkerEdgeColor',SC(s).Color)
+    end
     % Create SC(s).NoC Saggital Contour Profiles (SC(s).P)
     Contours{s} = IntersectMeshPlaneParfor(distalFemurUSP, SC(s).PlaneOrigins, ZVector);
     for c=1:SC(s).NoC
@@ -213,6 +217,7 @@ ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+5 Distal_MZ_median(2:3), 
 ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
+ICNmesh = splitMesh(ICNmesh, 'maxBoundingBox');
 
 % Get contour of the ICN mesh in the y-z plane
 ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
@@ -220,13 +225,13 @@ ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
 % Shrink contour on both sides and on the top
 ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:)=[];
 ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:)=[];
-ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-2 MZE(3), 1 0 0, 0 0 1]),:)=[];
+ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:)=[];
 [~, silYmaxIdx] = max(ICNcontour(:,2));
 
 % Final ICN point
 ICNpoint = [Distal_MZ_median(1) ICNcontour(silYmaxIdx,2:3)];
-[ICN_D, ICN_Idx] = pdist2(Distal_MZ_median,ICNpoint,'euclidean','Smallest',1);
-[~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ_median(ICN_Idx,:),'euclidean','Smallest',1);
+[ICN_D, ICN_Idx] = pdist2(Distal_MZ,ICNpoint,'euclidean','Smallest',1);
+[~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ(ICN_Idx,:),'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
 %% Take start points (A) of zone NZ specified by ExRange
@@ -258,19 +263,17 @@ for s=1:LS
         countIdx = countIdx+1;
     end; clear c
 end
-ProximalAnterior(isoutlier(ProximalAnterior,'movmedian',10)) = nan;
+ProximalAnterior(any(isoutlier(ProximalAnterior,'movmedian',10),2),:) = nan;
 % End point RC-MZ: Most proximal point of all end points (B) of the zones NZ, MZ, PZ
 [~, I_ProximalAnterior_Ymax] = max(ProximalAnterior(:,2));
 EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
 
 %% Visualization
 if visu == 1
-    [~, axH] = visualizeMeshes(distalFemurUSP);
-    
     drawLine3d(axH, PFEA, 'b')
     
     for i=1:size(PFEA_IS_Pts,1)
-        scatter3(axH, PISP{i,3}(1),PISP{i,3}(2),PISP{i,3}(3),'m','filled');
+        scatter3(axH, PFEA_IS_Pts(:,1),PFEA_IS_Pts(:,2),PFEA_IS_Pts(:,3),'m','filled');
     end; clear i
     
     for s=1:LS
@@ -304,7 +307,7 @@ if visu == 1
     drawPoint3d(axH, EP.Anterior,pointProps)
     drawLabels3d(axH, EP.Anterior, 'Anterior')
     
-    drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor', 'k')
+    drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor', 'k','MarkerEdgeColor','k')
     drawLabels3d(axH, ICNpoint, 'ICN')
     drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
     drawMesh(axH, ICNmesh,'FaceAlpha',0.5,'FaceColor','none')
