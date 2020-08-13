@@ -56,7 +56,7 @@ if PFEA(6)<0; PFEA(4:6) = -PFEA(4:6); end
 PFEA_IS_Pts = PFEA_IS_Pts(sortIdx,:);
 
 if visu
-    patchProps.FaceAlpha = 0.5;
+    patchProps.FaceAlpha = 1;
     [~, axH] = visualizeMeshes(distalFemurUSP, patchProps);
     drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','k', 'MarkerEdgeColor','k')
 end
@@ -71,9 +71,9 @@ if size(PFEA_IS_Pts,1) > 4
     % Delete them based on the position
     for d=1:length(diffIdx)
         if PFEA_IS_Pts(diffIdx(d),3)<0
-            PFEA_IS_Pts(diffIdx(d),:)=nan;
+            PFEA_IS_Pts(diffIdx(d),:) = nan;
         else
-            PFEA_IS_Pts(diffIdx(d)+1,:)=nan;
+            PFEA_IS_Pts(diffIdx(d)+1,:) = nan;
         end
     end
     PFEA_IS_Pts(any(isnan(PFEA_IS_Pts),2),:)=[];
@@ -123,12 +123,6 @@ SC(3).Origin = PZS;
 LS = size(SC,2);
 ZoneColors = parula(LS*2);
 
-if visu
-    for s=1:LS
-        drawPoint3d(axH, SC(s).Origin)
-    end
-end
-
 %% Sagittal Cuts (SC)
 ZVector = [0, 0, 1];
 
@@ -137,9 +131,6 @@ for s=1:LS
     SC(s).Color = ZoneColors(s,:);
     % Create cutting plane origins
     SC(s).PlaneOrigins = repmat(SC(s).Origin, SC(s).NoC, 1) + [zeros(SC(s).NoC,2), (0:SC(s).NoC-1)'];
-    if visu
-        drawPoint3d(axH, SC(s).PlaneOrigins,'MarkerFaceColor',SC(s).Color, 'MarkerEdgeColor',SC(s).Color)
-    end
     % Create SC(s).NoC Saggital Contour Profiles (SC(s).P)
     Contours{s} = IntersectMeshPlaneParfor(distalFemurUSP, SC(s).PlaneOrigins, ZVector);
     for c=1:SC(s).NoC
@@ -217,7 +208,6 @@ ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+5 Distal_MZ_median(2:3), 
 ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
-ICNmesh = splitMesh(ICNmesh, 'maxBoundingBox');
 
 % Get contour of the ICN mesh in the y-z plane
 ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
@@ -226,10 +216,24 @@ ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
 ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:)=[];
 ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:)=[];
 ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:)=[];
-[~, silYmaxIdx] = max(ICNcontour(:,2));
+ICNcontour(any(isnan(ICNcontour),2),:)=[];
 
-% Final ICN point
-ICNpoint = [Distal_MZ_median(1) ICNcontour(silYmaxIdx,2:3)];
+% Remove outliers of the distal contour and take the longest part
+ICNcontour = angleSort3d(ICNcontour, [0 0 0]);
+[~, ICNcontourSortIdx] = sort(ICNcontour(:,3));
+ICNcontour = ICNcontour(ICNcontourSortIdx,:);
+[~, ICNcontourUniqueIdx] = uniquetol(ICNcontour(:,3),3e-2);
+ICNcontour = ICNcontour(ICNcontourUniqueIdx,:);
+ICNcontour(isoutlier(ICNcontour(:,2),'movmedian',5),:) = nan;
+ICNcontour = splitPolygons(ICNcontour);
+[~, ICNcontourMax] = max(cellfun(@(x) size(x,1),ICNcontour));
+ICNcontour = ICNcontour{ICNcontourMax};
+
+% Find the maximum of the contour in y direction
+[~, ICNconYmaxIdx] = max(ICNcontour(:,2));
+
+% Construct the final ICN point
+ICNpoint = [Distal_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
 [ICN_D, ICN_Idx] = pdist2(Distal_MZ,ICNpoint,'euclidean','Smallest',1);
 [~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ(ICN_Idx,:),'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
