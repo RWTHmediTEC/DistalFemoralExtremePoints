@@ -47,9 +47,15 @@ end
 % Find the inferior extreme point A (ExA)
 ZCP_Candidates = zcp{sigma}(zcp{sigma}<IYMin);
 zero_ExA = ZCP_Candidates(end);
-ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>zero_ExA & Local_Maxima_Indcs<IYMin);
+if zero_ExA > IXMin
+    lowerBound = zero_ExA;
+else
+    lowerBound = IXMin;
+end
+ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>lowerBound & Local_Maxima_Indcs<IYMin);
 if ~isempty(ExA_Candidates)
-    ExA  = ExA_Candidates(1);
+    [~, ExA_CandMaxIdx] = max(K{sigma}(ExA_Candidates));
+    ExA = ExA_Candidates(ExA_CandMaxIdx);
 else
     % If no candiates are found, use the middle between the last zero
     % crossing before YMin and the local maxima around YMin.

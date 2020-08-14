@@ -76,7 +76,7 @@ if size(PFEA_IS_Pts,1) > 4
             PFEA_IS_Pts(diffIdx(d)+1,:) = nan;
         end
     end
-    PFEA_IS_Pts(any(isnan(PFEA_IS_Pts),2),:)=[];
+    PFEA_IS_Pts(any(isnan(PFEA_IS_Pts),2),:) = [];
     % Check again
     if size(PFEA_IS_Pts,1) ~= 4
         error(PFEA_error)
@@ -204,7 +204,8 @@ Distal_MZ_median = median(Distal_MZ,'omitnan');
 
 % Clip region of the ICN
 ICNmesh = cutMeshByPlane(distalFemurUSP, [MZS, 0 1 0, 0 0 1]);
-ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+5 Distal_MZ_median(2:3), 0 1 0, 0 0 -1]);
+ANTERIOR_CUT = 5; %[mm]
+ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+ANTERIOR_CUT Distal_MZ_median(2:3), 0 1 0, 0 0 -1]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
@@ -213,16 +214,16 @@ ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
 ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
 
 % Shrink contour on both sides and on the top
-ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:)=[];
-ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:)=[];
-ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:)=[];
-ICNcontour(any(isnan(ICNcontour),2),:)=[];
+ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:) = [];
+ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:) = [];
+ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:) = [];
+ICNcontour(any(isnan(ICNcontour),2),:) = [];
 
 % Remove outliers of the distal contour and take the longest part
 ICNcontour = angleSort3d(ICNcontour, [0 0 0]);
 [~, ICNcontourSortIdx] = sort(ICNcontour(:,3));
 ICNcontour = ICNcontour(ICNcontourSortIdx,:);
-[~, ICNcontourUniqueIdx] = uniquetol(ICNcontour(:,3),3e-2);
+[~, ICNcontourUniqueIdx] = uniquetol(ICNcontour(:,3), 3e-2);
 ICNcontour = ICNcontour(ICNcontourUniqueIdx,:);
 ICNcontour(isoutlier(ICNcontour(:,2),'movmedian',5),:) = nan;
 ICNcontour = splitPolygons(ICNcontour);
@@ -234,7 +235,7 @@ ICNcontour = ICNcontour{ICNcontourMax};
 
 % Construct the final ICN point
 ICNpoint = [Distal_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
-[ICN_D, ICN_Idx] = pdist2(Distal_MZ,ICNpoint,'euclidean','Smallest',1);
+[~, ICN_Idx] = pdist2(Distal_MZ,ICNpoint,'euclidean','Smallest',1);
 [~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ(ICN_Idx,:),'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
