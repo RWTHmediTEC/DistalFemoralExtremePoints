@@ -55,12 +55,6 @@ if PFEA(6)<0; PFEA(4:6) = -PFEA(4:6); end
 [PFEA_Pos, sortIdx] = sort(PFEA_Pos);
 PFEA_IS_Pts = PFEA_IS_Pts(sortIdx,:);
 
-if visu
-    patchProps.FaceAlpha = 1;
-    [~, axH] = visualizeMeshes(distalFemurUSP, patchProps);
-    drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','k', 'MarkerEdgeColor','k')
-end
-
 % Should always be four inters. points
 PFEA_error = 'PFEA intersection points with the distal femur mesh ~= 4.';
 if size(PFEA_IS_Pts,1) > 4
@@ -83,6 +77,12 @@ if size(PFEA_IS_Pts,1) > 4
     end
 elseif size(PFEA_IS_Pts,1) < 4
     error(PFEA_error)
+end
+
+if visu
+    patchProps.FaceAlpha = 1;
+    [~, axH, figH] = visualizeMeshes(distalFemurUSP, patchProps);
+    drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','y', 'MarkerEdgeColor','y')
 end
 
 % The intersection points devide the distal femur into 3 parts in Z direction:
@@ -121,7 +121,7 @@ SC(2).Origin = MZS;
 SC(3).Origin = PZS;
 
 LS = size(SC,2);
-ZoneColors = parula(LS*2);
+ZoneColors = [.3 .3 1; 0 0 1; .6 .6 1];
 
 %% Sagittal Cuts (SC)
 ZVector = [0, 0, 1];
@@ -275,11 +275,10 @@ EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
 
 %% Visualization
 if visu == 1
-    drawLine3d(axH, PFEA, 'b')
-    
-    for i=1:size(PFEA_IS_Pts,1)
-        scatter3(axH, PFEA_IS_Pts(:,1),PFEA_IS_Pts(:,2),PFEA_IS_Pts(:,3),'m','filled');
-    end; clear i
+    drawEdge3d(axH, ...
+        [PFEA_IS_Pts(1,1:2) PFEA_IS_Pts(1,3)-5],...
+        [PFEA_IS_Pts(4,1:2) PFEA_IS_Pts(4,3)+5],...
+        'Color', 'y','Linewidth',2)
     
     for s=1:LS
         for c=1:SC(s).NoC
@@ -298,26 +297,40 @@ if visu == 1
         end
     end
     
-    pointProps.MarkerFaceColor = 'r';
-    pointProps.MarkerEdgeColor = 'r';
+    pointProps.MarkerFaceColor = 'k';
+    pointProps.MarkerEdgeColor = 'k';
     pointProps.Marker = 'o';
-    pointProps.MarkerSize = 10;
     
     drawPoint3d(axH, EP.Medial,pointProps)
     drawLabels3d(axH, EP.Medial, 'Medial')
     drawPoint3d(axH, EP.Intercondylar,pointProps)
-    drawLabels3d(axH, EP.Intercondylar, 'Intercondylar')
+    drawLabels3d(axH, EP.Intercondylar, 'ICN')
     drawPoint3d(axH, EP.Lateral,pointProps)
     drawLabels3d(axH, EP.Lateral, 'Lateral')
     drawPoint3d(axH, EP.Anterior,pointProps)
     drawLabels3d(axH, EP.Anterior, 'Anterior')
     
-    drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor', 'k','MarkerEdgeColor','k')
-    drawLabels3d(axH, ICNpoint, 'ICN')
+    drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor','r', 'MarkerEdgeColor','r')
+    drawLabels3d(axH, ICNpoint, 'ICN_{temp}')
     drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
-    drawMesh(axH, ICNmesh,'FaceAlpha',0.5,'FaceColor','none')
+    patchProps.EdgeColor = 'none';
+    patchProps.FaceColor = 'g';
+    patchProps.FaceAlpha = 0.5;
+    patchProps.FaceLighting = 'gouraud';
+    patch(axH, ICNmesh, patchProps)
     
-    anatomicalViewButtons(axH, 'ASR')
+    % anatomicalViewButtons(axH, 'ASR')
+    
+    % For publication
+    % axis(axH, 'off')
+    % camTar = [0 0 0];
+    % camNorm = [0 -1 0];
+    % set(axH, 'CameraTarget',camTar);
+    % set(axH, 'CameraPosition',camTar + camNorm*700);
+    % set(axH, 'CameraUpVector',normalizeVector3d([1 -1 0]));
+    % set(axH, 'CameraViewAngle',10)
+    % set(figH, 'GraphicsSmoothing','off')
+    % export_fig('Figure7', '-tif', '-r300')
 end
 
 end
