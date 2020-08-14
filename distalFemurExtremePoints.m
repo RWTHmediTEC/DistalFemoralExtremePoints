@@ -81,7 +81,7 @@ end
 
 if visu
     patchProps.FaceAlpha = 1;
-    [~, axH, figH] = visualizeMeshes(distalFemurUSP, patchProps);
+    [~, axH, figH] = visualizeMeshes(distalFemurUSP, patchProps); %#ok<ASGLU>
     drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','y', 'MarkerEdgeColor','y')
 end
 
@@ -194,18 +194,18 @@ end
 
 %% Intercondylar Notch (ICN)
 % Take start points (A) of zone MZ specified by ExRange
-Distal_MZ = nan(SC(MZ).NoC,3);
+A_MZ = nan(SC(MZ).NoC,3);
 for c = SC(MZ).ExRange
-    Distal_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
+    A_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).A,:);
 end
-Distal_MZ(any(isoutlier(Distal_MZ),2),:) = nan;
+A_MZ = A_MZ(~any(isoutlier(A_MZ),2),:);
 % Median of the points A
-Distal_MZ_median = median(Distal_MZ,'omitnan');
+A_MZ_median = median(A_MZ,'omitnan');
 
 % Clip region of the ICN
 ICNmesh = cutMeshByPlane(distalFemurUSP, [MZS, 0 1 0, 0 0 1]);
 ANTERIOR_CUT = 5; %[mm]
-ICNmesh = cutMeshByPlane(ICNmesh, [Distal_MZ_median(1)+ANTERIOR_CUT Distal_MZ_median(2:3), 0 1 0, 0 0 -1]);
+ICNmesh = cutMeshByPlane(ICNmesh, [A_MZ_median(1)+ANTERIOR_CUT A_MZ_median(2:3), 0 1 0, 0 0 -1]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZS, 1 0 0, 0  1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
@@ -234,9 +234,9 @@ ICNcontour = ICNcontour{ICNcontourMax};
 [~, ICNconYmaxIdx] = max(ICNcontour(:,2));
 
 % Construct the final ICN point
-ICNpoint = [Distal_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
-[~, ICN_Idx] = pdist2(Distal_MZ,ICNpoint,'euclidean','Smallest',1);
-[~, ICN_Idx] = pdist2(distalFemurUSP.vertices, Distal_MZ(ICN_Idx,:),'euclidean','Smallest',1);
+ICNpoint = [A_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
+[~, ICN_Idx] = pdist2(A_MZ,ICNpoint,'euclidean','Smallest',1);
+[~, ICN_Idx] = pdist2(distalFemurUSP.vertices, A_MZ(ICN_Idx,:),'euclidean','Smallest',1);
 EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
 
 %% Take start points (A) of zone NZ specified by ExRange
@@ -274,7 +274,7 @@ ProximalAnterior(any(isoutlier(ProximalAnterior,'movmedian',10),2),:) = nan;
 EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
 
 %% Visualization
-if visu == 1
+if visu
     drawEdge3d(axH, ...
         [PFEA_IS_Pts(1,1:2) PFEA_IS_Pts(1,3)-5],...
         [PFEA_IS_Pts(4,1:2) PFEA_IS_Pts(4,3)+5],...
@@ -296,6 +296,9 @@ if visu == 1
                 'Color', SC(s).Color,'Linewidth',2);
         end
     end
+    
+    drawPolyline3d(axH, A_MZ,'Color','b','LineWidth',1,'LineStyle','--')
+    drawPolyline3d(axH, A_MZ,'Color','b','LineWidth',3)
     
     pointProps.MarkerFaceColor = 'k';
     pointProps.MarkerEdgeColor = 'k';
@@ -319,7 +322,7 @@ if visu == 1
     patchProps.FaceLighting = 'gouraud';
     patch(axH, ICNmesh, patchProps)
     
-    % anatomicalViewButtons(axH, 'ASR')
+    anatomicalViewButtons(axH, 'ASR')
     
     % For publication
     % axis(axH, 'off')
