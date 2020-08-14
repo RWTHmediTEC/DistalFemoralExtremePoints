@@ -137,6 +137,12 @@ for s=1:LS
         % If there is more than one closed contour after the cut, use the longest one
         [~, IobC] = max(cellfun(@length, Contours{s}{c}));
         SC(s).P(c).xyz = Contours{s}{c}{IobC}';
+        SC(s).P(c).xyz = unique(SC(s).P(c).xyz,'rows','stable');
+        % Set Start of the contour to the maximum Y value
+        [~, IYMax] = max(SC(s).P(c).xyz(:,2));
+        if IYMax ~= 1
+            SC(s).P(c).xyz = SC(s).P(c).xyz([IYMax:length(SC(s).P(c).xyz),1:IYMax-1],:);
+        end
         % Close contour: Copy start value to the end
         if ~isequal(SC(s).P(c).xyz(1,:),SC(s).P(c).xyz(end,:))
             SC(s).P(c).xyz(end+1,:) = SC(s).P(c).xyz(1,:);
@@ -145,11 +151,6 @@ for s=1:LS
         if sign(varea(SC(s).P(c).xyz')) == -1
             % Sort the contour counter-clockwise
             SC(s).P(c).xyz = flipud(SC(s).P(c).xyz);
-        end
-        % Set Start of the contour to the maximum Y value
-        [~, IYMax] = max(SC(s).P(c).xyz(:,2));
-        if IYMax ~= 1
-            SC(s).P(c).xyz = SC(s).P(c).xyz([IYMax:length(SC(s).P(c).xyz),1:IYMax-1],:);
         end
     end
 end

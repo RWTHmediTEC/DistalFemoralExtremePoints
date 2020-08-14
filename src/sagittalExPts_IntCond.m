@@ -45,33 +45,34 @@ end
 [~, Local_Maxima_Indcs] = findpeaks(K{sigma});
 
 % Find the inferior extreme point A (ExA)
-ZCP_Candidates = zcp{sigma}(zcp{sigma}<IYMin);
-zero_ExA = ZCP_Candidates(end);
-if zero_ExA > IXMin
+ZCP_Candidates = zcp{sigma}(zcp{sigma}>IXMin & zcp{sigma}<IYMin);
+zero_ExA = [];
+if ~isempty(ZCP_Candidates)
+    zero_ExA = ZCP_Candidates(1);
     lowerBound = zero_ExA;
 else
     lowerBound = IXMin;
 end
 ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>lowerBound & Local_Maxima_Indcs<IYMin);
 if ~isempty(ExA_Candidates)
+    % Use the largest peak
     [~, ExA_CandMaxIdx] = max(K{sigma}(ExA_Candidates));
     ExA = ExA_Candidates(ExA_CandMaxIdx);
 else
-    % If no candiates are found, use the middle between the last zero
-    % crossing before YMin and the local maxima around YMin.
-    ExA  = zero_ExA + round((Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IYMin)) - zero_ExA)/2);
+    % If no candiates are found
+    ExA  = lowerBound + round((Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IYMin)) - lowerBound)/2);
 end
 
 %% Anterior extremities B
-% ExB = Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IXMax));
+zero_ExB = [];
+ExB = IXMax;
 ZCP_B_Candidates = zcp{sigma}(zcp{sigma}>IYMin);
 if ~isempty(ZCP_B_Candidates)
     zero_ExB = ZCP_B_Candidates(1);
-    ExB_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs<zero_ExB);
-    ExB  = ExB_Candidates(end);
-else
-    zero_ExB=[];
-    ExB=IXMax;
+    ExB_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>IYMin & Local_Maxima_Indcs<zero_ExB);
+    if ~isempty(ExB_Candidates)
+        ExB  = ExB_Candidates(end);
+    end
 end
 
 %% Visualization
@@ -79,9 +80,9 @@ cpfh = [];
 if vis == 1 || vis == 2
     %% Plot: Contour
     cpfh = figure('name', 'Contour');
-    title('Contour');
-    plot(Contour(:,1),Contour(:,2),'k-','LineWidth',2);
-    hold on;
+    axH = axes();
+    plot(axH, Contour(:,1),Contour(:,2),'k-','LineWidth',2);
+    hold(axH, 'on')
     for i=1:length(zcp)
         Xs = Xsm{i};
         Ys = Ysm{i};
@@ -93,16 +94,17 @@ if vis == 1 || vis == 2
         delete(sch);
     end
     
-    % Visualization of the Running direction: Arrow -> at YMax
-    % Should be counter-clockwise
-    quiver(Contour(1,1),Contour(1,2),Contour(6,1)-Contour(1,1),Contour(6,2)-Contour(1,2),...
+    % Visualize the counter-clockwise running direction: Arrow at YMax.
+    quiver(axH, Contour(1,1),Contour(1,2),Contour(6,1)-Contour(1,1),Contour(6,2)-Contour(1,2),...
         'g','LineWidth',3,'AutoScale','off','MaxHeadSize',30);
-    scatter(Contour(zero_ExA,1),Contour(zero_ExA,2), 'filled');
-    text(Contour(zero_ExA,1),Contour(zero_ExA,2), 'Zero crossing point A',...
-        'VerticalAlignment','bottom','HorizontalAlignment','right');
+    if ~isempty(zero_ExA)
+        scatter(axH, Contour(zero_ExA,1),Contour(zero_ExA,2), 'filled');
+        text(axH, Contour(zero_ExA,1),Contour(zero_ExA,2), 'Zero crossing point A',...
+            'VerticalAlignment','bottom','HorizontalAlignment','right');
+    end
     if ~isempty(zero_ExB)
-        scatter(Contour(zero_ExB,1),Contour(zero_ExB,2), 'filled');
-        text(Contour(zero_ExB,1),Contour(zero_ExB,2), 'Zero crossing point B',...
+        scatter(axH, Contour(zero_ExB,1),Contour(zero_ExB,2), 'filled');
+        text(axH, Contour(zero_ExB,1),Contour(zero_ExB,2), 'Zero crossing point B',...
             'VerticalAlignment','bottom','HorizontalAlignment','left');
     end
     
@@ -120,36 +122,36 @@ if vis == 1 || vis == 2
     ScalingFactor = max(abs([XMin,XMax,YMin,YMax]));
     % Multiply the normals with kappa (K), to visualize K on the contour
     Normals = repmat(K{sigma},1,2).*Normals*ScalingFactor;
-    quiver(Contour(:,1),Contour(:,2),Normals(:,1),Normals(:,2),...
+    quiver(axH, Contour(:,1),Contour(:,2),Normals(:,1),Normals(:,2),...
         'color','k','ShowArrowHead','off','AutoScale','off','LineStyle','--')
     % Connect the tips of the normals
     NormalEnds = Normals + Contour;
-    plot(NormalEnds(:,1),NormalEnds(:,2),'k-.','LineWidth',1.5)
+    plot(axH, NormalEnds(:,1),NormalEnds(:,2),'k-.','LineWidth',1.5)
     
     %% Plot extreme points of the articulating surface
     % Plot the posterior extreme point A (pExA)
-    scatter(Contour(ExA,1),Contour(ExA,2), 'filled');
-    text(Contour(ExA,1),Contour(ExA,2), ['A for \sigma = ' num2str(sigma)],...
+    scatter(axH, Contour(ExA,1),Contour(ExA,2), 'filled');
+    text(axH, Contour(ExA,1),Contour(ExA,2), ['A for \sigma = ' num2str(sigma)],...
         'VerticalAlignment','bottom');
     
     % Plot the anterior medial extreme point B (amExB)
-    scatter(Contour(ExB,1),Contour(ExB,2), 'filled');
+    scatter(axH, Contour(ExB,1),Contour(ExB,2), 'filled');
     if ExB~=IXMax
-        text(Contour(ExB(1),1),Contour(ExB(1),2), ['medial B for \sigma = ' num2str(sigma)],...
+        text(axH, Contour(ExB(1),1),Contour(ExB(1),2), ['medial B for \sigma = ' num2str(sigma)],...
             'HorizontalAlignment','right');
     end
     
-    scatter(Contour(IXMin,1),Contour(IXMin,2), 'k', 'filled');
-    text(Contour(IXMin,1),Contour(IXMin,2), 'X_{Min}','HorizontalAlignment','left');
-    scatter(Contour(IXMax,1),Contour(IXMax,2), 'k', 'filled');
-    text(Contour(IXMax,1),Contour(IXMax,2), 'X_{Max}','HorizontalAlignment','right');
-    scatter(Contour(IYMin,1),Contour(IYMin,2), 'k', 'filled');
-    text(Contour(IYMin,1),Contour(IYMin,2), 'Y_{Min}','VerticalAlignment','bottom');
-    scatter(Contour(IYMax,1),Contour(IYMax,2), 'k', 'filled');
-    text(Contour(IYMax,1),Contour(IYMax,2), 'Y_{Max}','VerticalAlignment','top');
+    scatter(axH, Contour(IXMin,1),Contour(IXMin,2), 'k', 'filled');
+    text(axH, Contour(IXMin,1),Contour(IXMin,2), 'X_{Min}','HorizontalAlignment','left');
+    scatter(axH, Contour(IXMax,1),Contour(IXMax,2), 'k', 'filled');
+    text(axH, Contour(IXMax,1),Contour(IXMax,2), 'X_{Max}','HorizontalAlignment','right');
+    scatter(axH, Contour(IYMin,1),Contour(IYMin,2), 'k', 'filled');
+    text(axH, Contour(IYMin,1),Contour(IYMin,2), 'Y_{Min}','VerticalAlignment','bottom');
+    scatter(axH, Contour(IYMax,1),Contour(IYMax,2), 'k', 'filled');
+    text(axH, Contour(IYMax,1),Contour(IYMax,2), 'Y_{Max}','VerticalAlignment','top');
     
-    axis equal;
-    title('Intercondylar')
+    axis(axH,'equal');
+    title(axH,'Intercondylar')
     
     if vis == 2
         %% Plot: Curvature Scale Space (CSS) Image
