@@ -183,7 +183,11 @@ MZ = strcmp({SC(:).Zone}, 'MZ');
 PZ = strcmp({SC(:).Zone}, 'PZ');
 
 % Exclude border of the zones
-SC(MZ).ExRange = BORD_INT:SC(MZ).NoC-BORD_INT;
+if SC(MZ).NoC > 2*BORD_INT
+    SC(MZ).ExRange = BORD_INT:SC(MZ).NoC-BORD_INT;
+else
+    SC(MZ).ExRange = 1:SC(MZ).NoC;
+end
 switch side
     case 'R'
         SC(NZ).ExRange = 1:SC(NZ).NoC-BORD_INT;
@@ -221,7 +225,9 @@ ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:) = 
 ICNcontour(any(isnan(ICNcontour),2),:) = [];
 
 % Remove outliers of the distal contour and take the longest part
-ICNcontour = angleSort3d(ICNcontour, [0 0 0]);
+if size(ICNcontour,1) >= 3
+    ICNcontour = angleSort3d(ICNcontour, [0 0 0]);
+end
 [~, ICNcontourSortIdx] = sort(ICNcontour(:,3));
 ICNcontour = ICNcontour(ICNcontourSortIdx,:);
 [~, ICNcontourUniqueIdx] = uniquetol(ICNcontour(:,3), 3e-2);
