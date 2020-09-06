@@ -1,27 +1,48 @@
 function EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA, varargin)
-% TODO
+% DISTALFEMUREXTREMEPOINTS detects landmarks of the distal femur based on
+%   sagittal cutting contours.
+%
+%   EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA) returns the
+%   struct EP containing multiple landmarks of the distal femur, such as
+%   the intercondylar notch (ICN), the proximoposterior point of the 
+%   medial and lateral condyle (MPPC, LPPC) [beta version!] and the most 
+%   posterior point of the anterior articualting surface [beta version!]. 
 % 
 % INPUT:
 %   - REQUIRED:
-%     TODO
+%     distalFemurUSP - struct: A clean mesh of the distal femur defined by  
+%           the fields vertices (double [Nx3]) and faces (integer [Mx3]) 
+%           transformed into the USP coordinate system (see USP.m)
+%     side - char: 'Left' or 'Right' femur. Should start with 'L' or 'R'.
+%     PFEA - double [1x6]: A line fitted through the posterior foci of the
+%            ellipses with minimum dispersion (see USP.m).
 % 
 %   - OPTIONAL:
-%     TODO
+%     'Visualization' - Logical: Figure output. Default is false.
 % 
 % OUTPUT:
-%     TODO
+%     EP - struct containing fields with the name of the the landmarks with 
+%           the xyz-coordinates [1x3] in the USP coordinate system:
+%           ICN: intercondylar notch
+%           MPPC: medial proximoposterior condyle [beta version!]
+%           LPPC: lateral proximoposterior condyle [beta version!]
+%           ?: proximoanterior articulating surface [beta version!]
 % 
 % EXAMPLE:
-%     Run the file 'DistalFemurExtremePoints_Example.m'
+%     Run the file DistalFemurExtremePoints_Example.m
+%
+% REFERENCE:
+%     Based on: 2010 - Li - Automating Analyses of the Distal Femur 
+%     Articular Geometry Basedon Three-Dimensional Surface Data
 % 
 % TODO:
-%   - Add input of landmarks for additonal sanity checks
-%   - Documentation
+%   - Complete documentation
+%   - Maybe add input of landmarks for additonal sanity checks
 % 
 % AUTHOR: Maximilian C. M. Fischer
 % 	mediTEC - Chair of Medical Engineering, RWTH Aachen University
-% VERSION: 1.0.1
-% DATE: 2018-08-14
+% VERSION: 1.0.2
+% DATE: 2020-09-06
 % LICENSE: Modified BSD License (BSD license with non-military-use clause)
 
 addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));
@@ -82,7 +103,7 @@ end
 if visu
     patchProps.FaceAlpha = 1;
     [~, axH, figH] = visualizeMeshes(distalFemurUSP, patchProps); %#ok<ASGLU>
-    drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','y', 'MarkerEdgeColor','y')
+    drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','r', 'MarkerEdgeColor','r','MarkerSize',10)
 end
 
 % The intersection points devide the distal femur into 3 parts in Z direction:
@@ -285,7 +306,7 @@ if visu
     drawEdge3d(axH, ...
         [PFEA_IS_Pts(1,1:2) PFEA_IS_Pts(1,3)-5],...
         [PFEA_IS_Pts(4,1:2) PFEA_IS_Pts(4,3)+5],...
-        'Color', 'y','Linewidth',2)
+        'Color', 'r','Linewidth',2)
     
     for s=1:LS
         for c=1:SC(s).NoC
@@ -310,11 +331,13 @@ if visu
     pointProps.MarkerFaceColor = 'k';
     pointProps.MarkerEdgeColor = 'k';
     pointProps.Marker = 'o';
+    pointProps.MarkerSize = 12;
     
     drawPoint3d(axH, EP.Medial,pointProps)
     drawLabels3d(axH, EP.Medial, 'Medial')
     drawPoint3d(axH, EP.Intercondylar,pointProps)
-    drawLabels3d(axH, EP.Intercondylar, 'ICN')
+    drawLabels3d(axH, EP.Intercondylar, 'ICN',...
+        'FontSize',14,'VerticalAlignment','Top')
     drawPoint3d(axH, EP.Lateral,pointProps)
     drawLabels3d(axH, EP.Lateral, 'Lateral')
     drawPoint3d(axH, EP.Anterior,pointProps)
@@ -331,13 +354,13 @@ if visu
     
     anatomicalViewButtons(axH, 'ASR')
     
-    % For publication
+    % % For publication
     % axis(axH, 'off')
     % camTar = [0 0 0];
-    % camNorm = [0 -1 0];
+    % camNorm = [-1 0 0];
     % set(axH, 'CameraTarget',camTar);
     % set(axH, 'CameraPosition',camTar + camNorm*700);
-    % set(axH, 'CameraUpVector',normalizeVector3d([1 -1 0]));
+    % set(axH, 'CameraUpVector',normalizeVector3d([0 1 0]));
     % set(axH, 'CameraViewAngle',10)
     % set(figH, 'GraphicsSmoothing','off')
     % export_fig('Figure7', '-tif', '-r300')
