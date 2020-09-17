@@ -1,5 +1,5 @@
-function EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA, varargin)
-% DISTALFEMUREXTREMEPOINTS detects landmarks of the distal femur based on
+function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
+% DISTALFEMORALEXTREMEPOINTS detects landmarks of the distal femur based on
 %   sagittal cutting contours.
 %
 %   EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA) returns the
