@@ -5,11 +5,10 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 %   EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA) returns the
 %   struct EP containing multiple landmarks of the distal femur, such as
 %   the intercondylar notch (ICN), the proximoposterior point of the 
-%   medial and lateral condyle (MPPC, LPPC) [beta version!] and the most 
-%   posterior point of the anterior articualting surface [beta version!]. 
+%   medial and lateral condyle (MPPC, LPPC) [beta version!]. 
 % 
-% INPUT:
-%   - REQUIRED:
+% INPUT
+%   REQUIRED:
 %     distalFemurUSP - struct: A clean mesh of the distal femur defined by  
 %           the fields vertices (double [Nx3]) and faces (integer [Mx3]) 
 %           transformed into the USP coordinate system (see USP.m)
@@ -17,16 +16,15 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 %     PFEA - double [1x6]: A line fitted through the posterior foci of the
 %            ellipses with minimum dispersion (see USP.m).
 % 
-%   - OPTIONAL:
+%   OPTIONAL:
 %     'Visualization' - Logical: Figure output. Default is false.
 % 
-% OUTPUT:
+% OUTPUT
 %     EP - struct containing fields with the name of the the landmarks with 
 %           the xyz-coordinates [1x3] in the USP coordinate system:
 %           ICN: intercondylar notch
 %           MPPC: medial proximoposterior condyle [beta version!]
 %           LPPC: lateral proximoposterior condyle [beta version!]
-%           ?: proximoanterior articulating surface [beta version!]
 % 
 % EXAMPLE:
 %     Run the file DistalFemurExtremePoints_Example.m
@@ -43,7 +41,8 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 % 	mediTEC - Chair of Medical Engineering, RWTH Aachen University
 % VERSION: 1.0.2
 % DATE: 2020-09-06
-% LICENSE: Modified BSD License (BSD license with non-military-use clause)
+% COPYRIGHT (C) 2020 Maximilian C. M. Fischer
+% LICENSE: EUPL v1.2
 
 addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));
 
@@ -63,9 +62,7 @@ debugVisu = logical(p.Results.debugVisualization);
 % Sigma: For explanation see the function: BOMultiScaleCurvature2D_adapted.m
 sigmaStart = 1;
 sigmaDelta = 1;
-sigmaMedial = 4;
-sigmaIntercondylar = 4;
-sigmaLateral = 4;
+sigma = 4;
 
 %% Find boundary points of the condyles
 % Check that PFEA points in positive z direction
@@ -186,13 +183,13 @@ for s=1:LS
         switch SC(s).Zone
             case 'NZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    sagittalExPts_MedCond(Contour, sigmaStart, sigmaDelta, sigmaMedial, debugVisu);
+                    sagittalExPts_MedCond(Contour, sigmaStart, sigmaDelta, sigma, debugVisu);
             case 'MZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    sagittalExPts_IntCond(Contour, sigmaStart, sigmaDelta, sigmaIntercondylar, debugVisu);
+                    sagittalExPts_IntCond(Contour, sigmaStart, sigmaDelta, sigma, debugVisu);
             case 'PZ'
                 [SC(s).P(c).A, SC(s).P(c).B, SC(s).P(c).H] = ...
-                    sagittalExPts_LatCond(Contour, sigmaStart, sigmaDelta, sigmaLateral, debugVisu);
+                    sagittalExPts_LatCond(Contour, sigmaStart, sigmaDelta, sigma, debugVisu);
         end
     end
 end
@@ -287,19 +284,19 @@ ProximalPosterior_PZ(any(isnan(ProximalPosterior_PZ),2),:)=[];
 [~, PPPZ_Idx] = pdist2(distalFemurUSP.vertices,median(ProximalPosterior_PZ),'euclidean','Smallest',1);
 EP.Lateral = distalFemurUSP.vertices(PPPZ_Idx,:);
 
-% All end points (B) of the zones NZ, MZ, PZ
-ProximalAnterior = nan(sum([SC.NoC]),3);
-countIdx = 1;
-for s=1:LS
-    for c = 1:SC(s).NoC
-        ProximalAnterior(countIdx,:) = SC(s).P(c).xyz(SC(s).P(c).B,:);
-        countIdx = countIdx+1;
-    end; clear c
-end
-ProximalAnterior(any(isoutlier(ProximalAnterior,'movmedian',10),2),:) = nan;
-% End point RC-MZ: Most proximal point of all end points (B) of the zones NZ, MZ, PZ
-[~, I_ProximalAnterior_Ymax] = max(ProximalAnterior(:,2));
-EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
+%% All end points (B) of the zones NZ, MZ, PZ
+% ProximalAnterior = nan(sum([SC.NoC]),3);
+% countIdx = 1;
+% for s=1:LS
+%     for c = 1:SC(s).NoC
+%         ProximalAnterior(countIdx,:) = SC(s).P(c).xyz(SC(s).P(c).B,:);
+%         countIdx = countIdx+1;
+%     end; clear c
+% end
+% ProximalAnterior(any(isoutlier(ProximalAnterior,'movmedian',10),2),:) = nan;
+% % End point RC-MZ: Most proximal point of all end points (B) of the zones NZ, MZ, PZ
+% [~, I_ProximalAnterior_Ymax] = max(ProximalAnterior(:,2));
+% EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
 
 %% Visualization
 if visu
@@ -340,8 +337,8 @@ if visu
         'FontSize',14,'VerticalAlignment','Top')
     drawPoint3d(axH, EP.Lateral,pointProps)
     drawLabels3d(axH, EP.Lateral, 'Lateral')
-    drawPoint3d(axH, EP.Anterior,pointProps)
-    drawLabels3d(axH, EP.Anterior, 'Anterior')
+    % drawPoint3d(axH, EP.Anterior,pointProps)
+    % drawLabels3d(axH, EP.Anterior, 'Anterior')
     
     drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor','r', 'MarkerEdgeColor','r')
     drawLabels3d(axH, ICNpoint, 'ICN_{temp}')

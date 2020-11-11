@@ -1,6 +1,5 @@
-function [ExA, ExB, cpfh] = sagittalExPts_IntCond(Contour, sigmastart, sigmadelta, sigma, vis)
-
-%    - A Pattern-Recognition Algorithm for Identifying the Articulating Surface
+function [ExP, ExA, cpfh] = sagittalExPts_IntCond(Contour, sigmastart, sigmadelta, sigma, vis)
+% A pattern-recognition algorithm for identifying the articulating surface
 %
 %   INPUT:
 %       Contour    - nx2 double: X- & Y-coordinates of the contour
@@ -9,19 +8,19 @@ function [ExA, ExB, cpfh] = sagittalExPts_IntCond(Contour, sigmastart, sigmadelt
 %       sigmastart - Starting sigma value (see BOMultiScaleCurvature2D_adapted)
 %       sigmadelta - Delta value of sigma (see BOMultiScaleCurvature2D_adapted)
 %       sigma      - Sigma, that is used to detect the local maxima
-%       vis        - visualization options: 1 = Plot contour
+%       vis        - visualization options:
+%                               - 0: Plot nothing
+%                               - 1: Plot contour
 %
 %   OUTPUT:
-%       pExA  - integer: posterior extreme point A
-%       aExB  - integer: anterior extreme point B
-%       cpfh  - figure handle: empty if vis == 0
+%       ExP        - integer: posterior extreme point P
+%       ExA        - integer: anterior extreme point A
+%       cpfh       - figure handle: empty if vis == 0
 %
-%   USAGE:
-%
-%   AUTHOR: MCMF
-%
-%   VERSION:
-%
+% AUTHOR: Maximilian C. M. Fischer
+% COPYRIGHT (C) 2020 Maximilian C. M. Fischer
+% LICENSE: EUPL v1.2
+% 
 
 %% Calculations
 % Calculate the multi-scale curvature & the curvature scale-space image
@@ -37,41 +36,41 @@ if IYMax ~=1
     warning('Contour should start at the max. Y value (YMax): Algorithm1 won''t work!')
 end
 
-%% Find the posterior extreme point A (pExA)
+%% Find the posterior extreme point P (ExP)
 % Which Gaussian of width (sigma) should be used to find the local maxima
 if sigma > length(zcp)
     sigma = length(zcp);
 end
 [~, Local_Maxima_Indcs] = findpeaks(K{sigma});
 
-% Find the inferior extreme point A (ExA)
+% Find the inferior extreme point P (ExP)
 ZCP_Candidates = zcp{sigma}(zcp{sigma}>IXMin & zcp{sigma}<IYMin);
-zero_ExA = [];
+zero_ExP = [];
 if ~isempty(ZCP_Candidates)
-    zero_ExA = ZCP_Candidates(1);
-    lowerBound = zero_ExA;
+    zero_ExP = ZCP_Candidates(1);
+    lowerBound = zero_ExP;
 else
     lowerBound = IXMin;
 end
-ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>lowerBound & Local_Maxima_Indcs<IYMin);
-if ~isempty(ExA_Candidates)
+ExP_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>lowerBound & Local_Maxima_Indcs<IYMin);
+if ~isempty(ExP_Candidates)
     % Use the largest peak
-    [~, ExA_CandMaxIdx] = max(K{sigma}(ExA_Candidates));
-    ExA = ExA_Candidates(ExA_CandMaxIdx);
+    [~, ExP_CandMaxIdx] = max(K{sigma}(ExP_Candidates));
+    ExP = ExP_Candidates(ExP_CandMaxIdx);
 else
     % If no candiates are found
-    ExA  = lowerBound + round((Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IYMin)) - lowerBound)/2);
+    ExP  = lowerBound + round((Local_Maxima_Indcs(knnsearch(Local_Maxima_Indcs, IYMin)) - lowerBound)/2);
 end
 
-%% Anterior extremities B
-zero_ExB = [];
-ExB = IXMax;
-ZCP_B_Candidates = zcp{sigma}(zcp{sigma}>IYMin);
-if ~isempty(ZCP_B_Candidates)
-    zero_ExB = ZCP_B_Candidates(1);
-    ExB_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>IYMin & Local_Maxima_Indcs<zero_ExB);
-    if ~isempty(ExB_Candidates)
-        ExB  = ExB_Candidates(end);
+%% Anterior extremities A
+zero_ExA = [];
+ExA = IXMax;
+ZCP_A_Candidates = zcp{sigma}(zcp{sigma}>IYMin);
+if ~isempty(ZCP_A_Candidates)
+    zero_ExA = ZCP_A_Candidates(1);
+    ExA_Candidates = Local_Maxima_Indcs(Local_Maxima_Indcs>IYMin & Local_Maxima_Indcs<zero_ExA);
+    if ~isempty(ExA_Candidates)
+        ExA  = ExA_Candidates(end);
     end
 end
 
@@ -79,7 +78,7 @@ end
 cpfh = [];
 if vis == 1 || vis == 2
     %% Plot: Contour
-    cpfh = figure('name', 'Contour');
+    cpfh = figure('Name','Intercondylar Contour', 'Color','w', 'WindowState','Maximized');
     axH = axes();
     plot(axH, Contour(:,1),Contour(:,2),'k-','LineWidth',2);
     hold(axH, 'on')
@@ -97,14 +96,14 @@ if vis == 1 || vis == 2
     % Visualize the counter-clockwise running direction: Arrow at YMax.
     quiver(axH, Contour(1,1),Contour(1,2),Contour(6,1)-Contour(1,1),Contour(6,2)-Contour(1,2),...
         'g','LineWidth',3,'AutoScale','off','MaxHeadSize',30);
+    if ~isempty(zero_ExP)
+        scatter(axH, Contour(zero_ExP,1),Contour(zero_ExP,2), 'filled');
+        text(axH, Contour(zero_ExP,1),Contour(zero_ExP,2), 'Zero crossing point P',...
+            'VerticalAlignment','bottom','HorizontalAlignment','right');
+    end
     if ~isempty(zero_ExA)
         scatter(axH, Contour(zero_ExA,1),Contour(zero_ExA,2), 'filled');
         text(axH, Contour(zero_ExA,1),Contour(zero_ExA,2), 'Zero crossing point A',...
-            'VerticalAlignment','bottom','HorizontalAlignment','right');
-    end
-    if ~isempty(zero_ExB)
-        scatter(axH, Contour(zero_ExB,1),Contour(zero_ExB,2), 'filled');
-        text(axH, Contour(zero_ExB,1),Contour(zero_ExB,2), 'Zero crossing point B',...
             'VerticalAlignment','bottom','HorizontalAlignment','left');
     end
     
@@ -129,15 +128,15 @@ if vis == 1 || vis == 2
     plot(axH, NormalEnds(:,1),NormalEnds(:,2),'k-.','LineWidth',1.5)
     
     %% Plot extreme points of the articulating surface
-    % Plot the posterior extreme point A (pExA)
-    scatter(axH, Contour(ExA,1),Contour(ExA,2), 'filled');
-    text(axH, Contour(ExA,1),Contour(ExA,2), ['A for \sigma = ' num2str(sigma)],...
+    % Plot the posterior extreme point P (ExP)
+    scatter(axH, Contour(ExP,1),Contour(ExP,2), 'filled');
+    text(axH, Contour(ExP,1),Contour(ExP,2), ['P for \sigma = ' num2str(sigma)],...
         'VerticalAlignment','bottom');
     
-    % Plot the anterior medial extreme point B (amExB)
-    scatter(axH, Contour(ExB,1),Contour(ExB,2), 'filled');
-    if ExB~=IXMax
-        text(axH, Contour(ExB(1),1),Contour(ExB(1),2), ['medial B for \sigma = ' num2str(sigma)],...
+    % Plot the anterior medial extreme point A (ExA)
+    scatter(axH, Contour(ExA,1),Contour(ExA,2), 'filled');
+    if ExA~=IXMax
+        text(axH, Contour(ExA(1),1),Contour(ExA(1),2), ['intercondylar A for \sigma = ' num2str(sigma)],...
             'HorizontalAlignment','right');
     end
     
@@ -151,7 +150,7 @@ if vis == 1 || vis == 2
     text(axH, Contour(IYMax,1),Contour(IYMax,2), 'Y_{Max}','VerticalAlignment','top');
     
     axis(axH,'equal');
-    title(axH,'Intercondylar')
+    title(axH,'Intercondylar Contour')
     
     if vis == 2
         %% Plot: Curvature Scale Space (CSS) Image
