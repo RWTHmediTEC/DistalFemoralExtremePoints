@@ -18,21 +18,23 @@ if ~exist('VSD', 'dir')
 end
 
 %% Load subject names
-load('VSD\MATLAB\res\VSD_Subjects.mat', 'Subjects')
-Subjects = table2cell(Subjects);
-Subjects(1:2:20,4) = {'L'}; Subjects(2:2:20,4) = {'R'};
+Subjects = dir('data\*.mat');
+Subjects = strrep({Subjects.name}','.mat','');
+Subjects(1:2:20,2) = {'L'}; Subjects(2:2:20,2) = {'R'};
 
 for s=1%:size(Subjects, 1)
+    name = Subjects{s,1};
+    side = Subjects{s,2};
     
     % Prepare distal femur
-    load(['VSD\Bones\' Subjects{s,1} '.mat'], 'B');
-    load(['data\' Subjects{s,1} '.mat'],...
+    load(['VSD\Bones\' name '.mat'], 'B');
+    load(['data\' name '.mat'],...
         'inertiaTFM','uspInitialRot','distalCutPlaneInertia','USPTFM','PFEA');
-    femurInertia = transformPoint3d(B(ismember({B.name}, ['Femur_' Subjects{s,4}])).mesh, inertiaTFM);
+    femurInertia = transformPoint3d(B(ismember({B.name}, ['Femur_' side])).mesh, inertiaTFM);
     distalFemurInertia = cutMeshByPlane(femurInertia, distalCutPlaneInertia);
     distalFemurUSP = transformPoint3d(distalFemurInertia, USPTFM);
     
-    ExPoints = distalFemoralExtremePoints(distalFemurUSP, Subjects{s,4}, PFEA, 'visu',1, 'debug',0);
+    ExPoints = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, 'visu',1, 'debug',0);
 end
 
 % [List.f, List.p] = matlab.codetools.requiredFilesAndProducts([mfilename '.m']); 

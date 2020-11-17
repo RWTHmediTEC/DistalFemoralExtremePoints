@@ -1,5 +1,5 @@
 function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
-% DISTALFEMORALEXTREMEPOINTS detects landmarks of the distal femur based on
+%DISTALFEMORALEXTREMEPOINTS detects landmarks of the distal femur based on
 %   sagittal cutting contours.
 %
 %   EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA) returns the
@@ -27,11 +27,11 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 %           LPPC: lateral proximoposterior condyle [beta version!]
 % 
 % EXAMPLE:
-%     Run the file DistalFemurExtremePoints_Example.m
+%     Run the file DistalFemurExtremePoints_example.m
 %
 % REFERENCE:
-%     Based on: 2010 - Li - Automating Analyses of the Distal Femur 
-%     Articular Geometry Basedon Three-Dimensional Surface Data
+%     Inspired by: 2010 - Li et al. - Automating Analyses of the Distal 
+%     Femur Articular Geometry Based on Three-Dimensional Surface Data
 % 
 % TODO:
 %   - Add input of the possible location of the landmarks for additonal 
@@ -39,8 +39,8 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 % 
 % AUTHOR: Maximilian C. M. Fischer
 % 	mediTEC - Chair of Medical Engineering, RWTH Aachen University
-% VERSION: 1.0.2
-% DATE: 2020-09-06
+% VERSION: 2.0.0
+% DATE: 2020-11-17
 % COPYRIGHT (C) 2020 Maximilian C. M. Fischer
 % LICENSE: EUPL v1.2
 
@@ -265,7 +265,7 @@ ICNcontour = ICNcontour{ICNcontourMax};
 ICNpoint = [P_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
 [~, ICN_Idx] = pdist2(P_MZ,ICNpoint,'euclidean','Smallest',1);
 [~, ICN_Idx] = pdist2(distalFemurUSP.vertices, P_MZ(ICN_Idx,:),'euclidean','Smallest',1);
-EP.Intercondylar = distalFemurUSP.vertices(ICN_Idx,:);
+EP.ICN = distalFemurUSP.vertices(ICN_Idx,:);
 
 %% Take posterior points (P) of zone NZ specified by ExRange
 P_NZ = nan(SC(NZ).NoC,3);
@@ -275,7 +275,7 @@ end
 P_NZ(any(isnan(P_NZ),2),:)=[];
 % Median of the start points
 [~, MPPC_Idx] = pdist2(distalFemurUSP.vertices,median(P_NZ),'euclidean','Smallest',1);
-EP.Medial = distalFemurUSP.vertices(MPPC_Idx,:);
+EP.MPPC = distalFemurUSP.vertices(MPPC_Idx,:);
 
 %% Take posterior points (P) of zone PZ specified by ExRange
 P_PZ = nan(SC(PZ).NoC,3);
@@ -285,21 +285,7 @@ end
 P_PZ(any(isnan(P_PZ),2),:)=[];
 % Median of the start points
 [~, LPPC_Idx] = pdist2(distalFemurUSP.vertices,median(P_PZ),'euclidean','Smallest',1);
-EP.Lateral = distalFemurUSP.vertices(LPPC_Idx,:);
-
-%% All end points (A) of the zones NZ, MZ, PZ
-% ProximalAnterior = nan(sum([SC.NoC]),3);
-% countIdx = 1;
-% for s=1:LS
-%     for c = 1:SC(s).NoC
-%         ProximalAnterior(countIdx,:) = SC(s).P(c).xyz(SC(s).P(c).A,:);
-%         countIdx = countIdx+1;
-%     end; clear c
-% end
-% ProximalAnterior(any(isoutlier(ProximalAnterior,'movmedian',10),2),:) = nan;
-% % End point RC-MZ: Most proximal point of all end points (A) of the zones NZ, MZ, PZ
-% [~, I_ProximalAnterior_Ymax] = max(ProximalAnterior(:,2));
-% EP.Anterior = ProximalAnterior(I_ProximalAnterior_Ymax,:);
+EP.LPPC = distalFemurUSP.vertices(LPPC_Idx,:);
 
 %% Visualization
 if visu
@@ -333,18 +319,15 @@ if visu
     pointProps.Marker = 'o';
     pointProps.MarkerSize = 12;
     
-    drawPoint3d(axH, EP.Medial,pointProps)
-    drawLabels3d(axH, EP.Medial, 'Medial')
-    drawPoint3d(axH, EP.Intercondylar,pointProps)
-    drawLabels3d(axH, EP.Intercondylar, 'ICN',...
-        'FontSize',14,'VerticalAlignment','Top')
-    drawPoint3d(axH, EP.Lateral,pointProps)
-    drawLabels3d(axH, EP.Lateral, 'Lateral')
-    % drawPoint3d(axH, EP.Anterior,pointProps)
-    % drawLabels3d(axH, EP.Anterior, 'Anterior')
+    drawPoint3d(axH, EP.MPPC,pointProps)
+    drawLabels3d(axH, EP.MPPC, 'MPPC','FontSize',14,'VerticalAlignment','Bottom')
+    drawPoint3d(axH, EP.ICN,pointProps)
+    drawLabels3d(axH, EP.ICN, 'ICN','FontSize',14,'VerticalAlignment','Top')
+    drawPoint3d(axH, EP.LPPC,pointProps)
+    drawLabels3d(axH, EP.LPPC, 'LPPC','FontSize',14,'VerticalAlignment','Bottom')
     
-    drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor','r', 'MarkerEdgeColor','r')
-    drawLabels3d(axH, ICNpoint, 'ICN_{temp}')
+    % drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor','r', 'MarkerEdgeColor','r')
+    % drawLabels3d(axH, ICNpoint, 'ICN_{temp}')
     drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
     patchProps.EdgeColor = 'none';
     patchProps.FaceColor = 'g';
