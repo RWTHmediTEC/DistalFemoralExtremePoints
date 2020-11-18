@@ -9,7 +9,7 @@ Please cite the following paper:<br/>
 none
 
 ## Usage 
-Clone with recursive option to get submodules and run *distalFemoralExtremePoints_example.m* in MATLAB.<br/>
+Clone with the recursive option to get the submodules and run *distalFemoralExtremePoints_example.m* in MATLAB.<br/>
 ![DFEP](https://user-images.githubusercontent.com/43516130/99406707-7ed2be00-28ee-11eb-9ecf-2f4a2ea056e5.jpg)
 
 ## License
