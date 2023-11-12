@@ -5,7 +5,7 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 %   EP = distalFemurExtremePoints(distalFemurUSP, side, PFEA) returns the
 %   struct EP containing multiple landmarks of the distal femur, such as
 %   the intercondylar notch (ICN), the proximoposterior point of the 
-%   medial and lateral condyle (MPPC, LPPC) [beta version!]. 
+%   medial and lateral condyle (MPPC, LPPC). 
 % 
 % INPUT
 %   REQUIRED:
@@ -23,8 +23,8 @@ function EP = distalFemoralExtremePoints(distalFemurUSP, side, PFEA, varargin)
 %     EP - struct containing fields with the name of the the landmarks with 
 %           the xyz-coordinates [1x3] in the USP coordinate system:
 %           ICN: intercondylar notch
-%           MPPC: medial proximoposterior condyle [beta version!]
-%           LPPC: lateral proximoposterior condyle [beta version!]
+%           MPPC: medial proximoposterior condyle
+%           LPPC: lateral proximoposterior condyle
 % 
 % EXAMPLE:
 %     Run the file DistalFemurExtremePoints_example.m
@@ -48,14 +48,17 @@ addpath(genpath([fileparts([mfilename('fullpath'), '.m']) '\src']));
 
 %% Parse inputs
 p = inputParser;
-logParValidFunc=@(x) (islogical(x) || isequal(x,1) || isequal(x,0));
+logParValidFunc = @(x) (islogical(x) || isequal(x,1) || isequal(x,0));
 addRequired(p,'distalFemurUSP',@(x) isstruct(x) && isfield(x, 'vertices') && isfield(x,'faces'))
 addRequired(p,'side',@(x) any(validatestring(upper(x(1)),{'R','L'})));
 addParameter(p,'visualization',false,logParValidFunc);
+addParameter(p,'subject','?',@(x) validateattributes(x,{'char'},{'nonempty'}));
 addParameter(p,'debugVisualization',false,logParValidFunc);
+
 parse(p, distalFemurUSP, side, varargin{:});
 side = upper(p.Results.side(1));
 visu = logical(p.Results.visualization);
+subject = p.Results.subject;
 debugVisu = logical(p.Results.debugVisualization);
 
 %% Settings
@@ -99,8 +102,10 @@ end
 
 if visu
     patchProps.FaceAlpha = 1;
-    [~, axH, figH] = visualizeMeshes(distalFemurUSP, patchProps); %#ok<ASGLU>
+    [~, axH, figH] = visualizeMeshes(distalFemurUSP, patchProps); 
     drawPoint3d(axH, PFEA_IS_Pts, 'MarkerFaceColor','r', 'MarkerEdgeColor','r','MarkerSize',10)
+    figH.Name = ['Distal femur extreme points of subject: ' subject];
+    figH.NumberTitle = 'off';
 end
 
 % The intersection points devide the distal femur into 3 parts in Z direction:
@@ -220,9 +225,11 @@ P_MZ = nan(SC(MZ).NoC,3);
 for c = SC(MZ).ExRange
     P_MZ(c,:) = SC(MZ).P(c).xyz(SC(MZ).P(c).P,:);
 end
-P_MZ = P_MZ(~any(isoutlier(P_MZ),2),:);
+if sum(~any(isoutlier(P_MZ),2)) > 0
+    P_MZ = P_MZ(~any(isoutlier(P_MZ),2),:);
+end
 % Median of the points A
-P_MZ_median = median(P_MZ,'omitnan');
+P_MZ_median = median(P_MZ, 1,'omitnan');
 
 % Clip region of the ICN
 ICNmesh = cutMeshByPlane(distalFemurUSP, [MZS, 0 1 0, 0 0 1]);
@@ -233,38 +240,43 @@ ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 -1 0]);
 ICNmesh = cutMeshByPlane(ICNmesh, [MZE, 1 0 0, 0 0 1]);
 
 % Get contour of the ICN mesh in the y-z plane
-ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
+if ~isempty(ICNmesh.vertices)
+    ICNcontour = meshSilhouette(ICNmesh, [0 0 0 0 1 0 0 0 1],'visu', 0);
 
-% Shrink contour on both sides and on the top
-ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:) = [];
-ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:) = [];
-ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:) = [];
-ICNcontour(any(isnan(ICNcontour),2),:) = [];
+    % Shrink contour on both sides and on the top
+    ICNcontour(isBelowPlane(ICNcontour,[MZS(1:2) MZS(3)+2, 1 0 0, 0  1 0]),:) = [];
+    ICNcontour(isBelowPlane(ICNcontour,[MZE(1:2) MZE(3)-2, 1 0 0, 0 -1 0]),:) = [];
+    ICNcontour(isBelowPlane(ICNcontour,[MZE(1) MZE(2)-3 MZE(3), 1 0 0, 0 0 1]),:) = [];
+    ICNcontour(any(isnan(ICNcontour),2),:) = [];
 
-% Remove outliers of the distal contour and take the longest part
-if size(ICNcontour,1) >= 3
-    ICNcontour = angleSort3d(ICNcontour, [0 0 0]);
+    % Remove outliers of the distal contour and take the longest part
+    if size(ICNcontour,1) >= 3
+        ICNcontour = angleSort3d(ICNcontour, [0 0 0]);
+    end
+    % Sort contour along the z axis
+    [~, ICNcontourSortIdx] = sort(ICNcontour(:,3));
+    ICNcontour = ICNcontour(ICNcontourSortIdx,:);
+    % Remove duplicate contour points
+    [~, ICNcontourUniqueIdx] = uniquetol(ICNcontour(:,3), 3e-2);
+    ICNcontour = ICNcontour(ICNcontourUniqueIdx,:);
+    % Remove outliers of the contour
+    ICNcontour(isoutlier(ICNcontour(:,2),'movmedian',5),:) = nan;
+    % Use the part of the contour with the most points
+    ICNcontour = splitPolygons(ICNcontour);
+    [~, ICNcontourMax] = max(cellfun(@(x) size(x,1),ICNcontour));
+    ICNcontour = ICNcontour{ICNcontourMax};
+
+    % Find the maximum of the contour in y direction
+    [~, ICNconYmaxIdx] = max(ICNcontour(:,2));
+
+    % Construct the final ICN point
+    ICNpoint = [P_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
+    [~, ICN_Idx] = pdist2(P_MZ, ICNpoint, 'euclidean','Smallest',1);
+    [~, ICN_Idx] = pdist2(distalFemurUSP.vertices, P_MZ(ICN_Idx,:), 'euclidean','Smallest',1);
+else
+    warning('Intercondylar Notch could not be detected using the standard algorithm! Use with caution!')
+    [~, ICN_Idx] = pdist2(distalFemurUSP.vertices, P_MZ_median, 'euclidean','Smallest',1);
 end
-% Sort contour along the z axis
-[~, ICNcontourSortIdx] = sort(ICNcontour(:,3));
-ICNcontour = ICNcontour(ICNcontourSortIdx,:);
-% Remove duplicate contour points
-[~, ICNcontourUniqueIdx] = uniquetol(ICNcontour(:,3), 3e-2);
-ICNcontour = ICNcontour(ICNcontourUniqueIdx,:);
-% Remove outliers of the contour
-ICNcontour(isoutlier(ICNcontour(:,2),'movmedian',5),:) = nan;
-% Use the part of the contour with the most points
-ICNcontour = splitPolygons(ICNcontour);
-[~, ICNcontourMax] = max(cellfun(@(x) size(x,1),ICNcontour));
-ICNcontour = ICNcontour{ICNcontourMax};
-
-% Find the maximum of the contour in y direction
-[~, ICNconYmaxIdx] = max(ICNcontour(:,2));
-
-% Construct the final ICN point
-ICNpoint = [P_MZ_median(1) ICNcontour(ICNconYmaxIdx,2:3)];
-[~, ICN_Idx] = pdist2(P_MZ,ICNpoint,'euclidean','Smallest',1);
-[~, ICN_Idx] = pdist2(distalFemurUSP.vertices, P_MZ(ICN_Idx,:),'euclidean','Smallest',1);
 EP.ICN = distalFemurUSP.vertices(ICN_Idx,:);
 
 %% Take posterior points (P) of zone NZ specified by ExRange
@@ -326,14 +338,16 @@ if visu
     drawPoint3d(axH, EP.LPPC,pointProps)
     drawLabels3d(axH, EP.LPPC, 'LPPC','FontSize',14,'VerticalAlignment','Bottom')
     
-    % drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor','r', 'MarkerEdgeColor','r')
-    % drawLabels3d(axH, ICNpoint, 'ICN_{temp}')
-    drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
-    patchProps.EdgeColor = 'none';
-    patchProps.FaceColor = 'g';
-    patchProps.FaceAlpha = 0.5;
-    patchProps.FaceLighting = 'gouraud';
-    patch(axH, ICNmesh, patchProps)
+    if ~isempty(ICNmesh.vertices)
+        % drawPoint3d(axH, ICNpoint, pointProps, 'MarkerFaceColor','r', 'MarkerEdgeColor','r')
+        % drawLabels3d(axH, ICNpoint, 'ICN_{temp}')
+        drawPolyline3d(axH, ICNcontour,'Color','g','LineWidth',3)
+        patchProps.EdgeColor = 'none';
+        patchProps.FaceColor = 'g';
+        patchProps.FaceAlpha = 0.5;
+        patchProps.FaceLighting = 'gouraud';
+        patch(axH, ICNmesh, patchProps)
+    end
     
     anatomicalViewButtons(axH, 'ASR')
 end
